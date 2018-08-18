@@ -2,6 +2,9 @@
 
 use Utils\View\View;
 use Utils\Uri\Uri;
+use Utils\I18n\I18n;
+use Controllers\PageLayout\MainLayoutController;
+use Utils\Uri\OcCookie;
 
 //set the global template-name variable
 function tpl_set_tplname($local_tpl_name){
@@ -42,8 +45,7 @@ function tpl_redirect($page)
     //page has to be the filename without domain i.e. 'viecache.php?cacheid=1'
     write_cookie_settings();
     http_write_no_cache();
-    //echo 'p='.$page;
-    //die();
+
     header("Location: " . $absolute_server_URI . $page);
     exit;
 }
@@ -145,68 +147,44 @@ function set_tpl_subtitle($title)
 }
 
 //read the templates and echo it to the user
-function tpl_BuildTemplate($dbdisconnect = true, $minitpl = false, $noCommonTemplate=false)
+function tpl_BuildTemplate($minitpl = false, $noCommonTemplate=false)
 {
     //template handling vars
-    global $stylepath, $tplname, $vars, $langpath, $lang_array, $lang, $language, $menu, $config, $usr;
+    global $stylepath, $tplname, $vars, $lang, $config, $usr;
 
     // object
     /** @var View $view */
     global $view;
 
-    //language specific expression
-    global $error_pagenotexist;
-    //only for debbuging
-    global $bScriptExecution;
+    MainLayoutController::initLegacy(); // init vars for main-layout
 
-    $bScriptExecution->Stop();
-    tpl_set_var('scripttime', sprintf('%1.3f', $bScriptExecution->Diff()));
-    tpl_set_var('language_flags', writeLanguageFlags($lang_array));
-
-    $bTemplateBuild = new Cbench;
-    $bTemplateBuild->Start();
-
-    //set {functionsbox}
-    global $page_functions, $functionsbox_start_tag, $functionsbox_middle_tag, $functionsbox_end_tag;
-
-    if (isset($page_functions)) {
-        $functionsbox = $functionsbox_start_tag;
-        foreach ($page_functions AS $func) {
-            if ($functionsbox != $functionsbox_start_tag) {
-                $functionsbox .= $functionsbox_middle_tag;
-            }
-            $functionsbox .= $func;
-        }
-        $functionsbox .= $functionsbox_end_tag;
-
-        tpl_set_var('functionsbox', $functionsbox);
+    if ($view->showGdprPage()) {
+        $tplname = 'userProfile/gdpr';
     }
-    //include language specific expressions, so that they are available in the template code
-    include $langpath . '/expressions.inc.php';
 
     //load main template
     if ($minitpl){
-        $sCode = file_get_contents($stylepath . '/mini.tpl.php');
+        $sCode = file_get_contents($stylepath . '/common/mini.tpl.php');
     }else if ($noCommonTemplate){
         $sCode = '{template}';
     }else if (isset($_REQUEST['print']) && $_REQUEST['print'] == 'y'){
-        $sCode = file_get_contents($stylepath . '/main_print.tpl.php');
+        $sCode = file_get_contents($stylepath . '/common/main_print.tpl.php');
     }else if (isset($_REQUEST['popup']) && $_REQUEST['popup'] == 'y'){
-        $sCode = file_get_contents($stylepath . '/popup.tpl.php');
+        $sCode = file_get_contents($stylepath . '/common/popup.tpl.php');
     }else {
-        $sCode = file_get_contents($stylepath . '/main.tpl.php');
+        $sCode = file_get_contents($stylepath . '/common/main.tpl.php');
     }
 
     //global css files:
-    $view->setVar('screenCss', Uri::getLinkWithModificationTime('tpl/stdstyle/css/style_screen.css'));
-    $view->setVar('printCss', Uri::getLinkWithModificationTime('tpl/stdstyle/css/style_print.css'));
-    $view->setVar('seasonCss', Uri::getLinkWithModificationTime('tpl/stdstyle/css/style_'.$view->getSeasonCssName().'.css'));
+    $view->setVar('screenCss', Uri::getLinkWithModificationTime('/tpl/stdstyle/css/style_screen.css'));
+    $view->setVar('printCss', Uri::getLinkWithModificationTime('/tpl/stdstyle/css/style_print.css'));
+    $view->setVar('backgroundSeason', $view->getSeasonCssName());
 
     //does template exist?
     if (!file_exists($stylepath . '/' . $tplname . '.tpl.php')) {
         //set up the error template
         $error = true;
-        tpl_set_var('error_msg', htmlspecialchars($error_pagenotexist, ENT_COMPAT, 'UTF-8'));
+        tpl_set_var('error_msg', "Page not found");
         tpl_set_var('tplname', $tplname);
         $tplname = 'error';
     }
@@ -234,8 +212,22 @@ function tpl_BuildTemplate($dbdisconnect = true, $minitpl = false, $noCommonTemp
     eval('?>'.$sCode);
 }
 
+//store the cookie vars
+function write_cookie_settings()
+{
+    global $lang;
+    OcCookie::set('lang', $lang, true);
+}
 
-
+function http_write_no_cache()
+{
+    // HTTP/1.1
+    header("Cache-Control: no-cache");
+    // Date in the past
+    header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+    // always modified
+    header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+}
 
 /* TODO: NOT USED ANYWHERE...
 
@@ -246,24 +238,4 @@ unset($GLOBALS['vars']);
 unset($GLOBALS['no_eval_vars']);
 }
 
-
-//page function replaces {functionsbox} in main template
-function tpl_set_page_function($id, $html_code)
-{
-global $page_functions;
-
-$page_functions[$id] = $html_code;
-}
-
-function tpl_unset_page_function($id)
-{
-global $page_functions;
-
-unset($page_functions[$id]);
-}
-
-function tpl_clear_page_functions()
-{
-unset($GLOBALS['page_functions']);
-}
 */

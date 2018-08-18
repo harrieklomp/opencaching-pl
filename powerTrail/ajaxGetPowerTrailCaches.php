@@ -2,7 +2,6 @@
 
 use lib\Objects\GeoCache\GeoCacheCommons;
 use lib\Objects\PowerTrail\PowerTrail;
-use lib\Objects\GeoCache\GeoCache;
 
 
 require_once __DIR__ . '/../lib/ClassPathDictionary.php';
@@ -31,7 +30,7 @@ function displayAllCachesOfPowerTrail(PowerTrail $powerTrail, $choseFinalCaches)
     }
 
 
-    if (count($powerTrail->getCacheCount()) == 0) {
+    if ($powerTrail->getCacheCount() == 0) {
         return '<br /><br />' . tr2('pt082', $language);
     }
 
@@ -139,6 +138,8 @@ function displayAllCachesOfPowerTrail(PowerTrail $powerTrail, $choseFinalCaches)
     $countCaches = $powerTrail->getCacheCount();
     if($countCaches > 0) {
         $restCachesPercent = round(($restCaches * 100) / $countCaches);
+        $cachePercent = [];
+        $cacheSizePercent = [];
         foreach ($cachetypes as $key => $value) {
             $cachePercent[$key] = round(($value * 100) / $countCaches);
         }
@@ -166,7 +167,7 @@ function ratings($score, $votes)
     switch ($scoreNum) {
         case 1: return '<span style="color: #790000">' . tr2('pt074', $language) . '</span>';
         case 2: return '<span style="color: #BF3C3C">' . tr2('pt073', $language) . '</span>';
-        case 3: return '<span style="color: #B36200">' . tr2('pt072', $language) . '</span>';
+        case 3: return '<span style="color: #505050">' . tr2('pt072', $language) . '</span>';
         case 4: return '<span style="color: #518C00">' . tr2('pt071', $language) . '</span>';
         case 5: return '<span style="color: #009D00">' . tr2('pt070', $language) . '</span>';
     }

@@ -11,6 +11,9 @@ date_default_timezone_set('Europe/Warsaw');
 if (!isset($rootpath))
     $rootpath = './';
 
+// country-id of the running node: pl|ro|nl...
+$config['ocNode'] = 'pl';
+
 //default used language
 if (!isset($lang))
     $lang = 'pl';
@@ -39,7 +42,7 @@ $site_name = 'localhost';
 // 10 Opencaching United States http://www.opencaching.us OU
 // 11 free
 // 12 Opencaching Russia http://www.opencaching.org.ru  (I don't know current status???)
-// 14 Opencaching Nederland http://www.opencaching.nl OB => OC Benelux
+// 14 Opencaching Nederland https://www.opencaching.nl OB => OC Benelux
 // 16 Opencaching Romania http://www.opencaching.ro OR
 //
 //id of the node 4 for local development
@@ -49,24 +52,16 @@ $oc_nodeid = 4;
 $GLOBALS['oc_waypoint'] = 'OP';
 
 //name of the cookie
-$opt['cookie']['name'] = 'oc';
-$opt['cookie']['path'] = '/';
-$opt['cookie']['domain'] = '.localhost';
-
-//name of the cookie
-if (!isset($cookiename))
-    $cookiename = 'oc';
-if (!isset($cookiepath))
-    $cookiepath = '/';
-if (!isset($cookiedomain))
-    $cookiedomain = '.locahost';
+$config['cookie']['name'] = 'oc';
+$config['cookie']['path'] = '/';
+$config['cookie']['domain'] = '.localhost';
 
 // Coordinates hidden for not-logged-ins?
 global $hide_coords;
 $hide_coords = false;
 
-// display online users on footer pages off=0 on=1
-$onlineusers = 1;
+// display online users in page footer
+$config['mainLayout']['displayOnlineUsers'] = true;
 
 //block register new cache before first find xx nuber caches value -1 off this feature
 $NEED_FIND_LIMIT = 10;
@@ -97,6 +92,8 @@ if (!isset($emailaddr))
 
 // location for dynamically generated files
 $dynbasepath = '/var/www/ocpl-data/';
+$config['path']['dynamicFilesDir'] = '/var/www/ocpl-data/';
+
 $dynstylepath = $dynbasepath . 'tpl/stdstyle/html/';
 
 // location of cache images
@@ -148,10 +145,6 @@ if (!isset($maxpicsize))
 if (!isset($picextensions))
     $picextensions = ';jpg;jpeg;gif;png;';
 
-// news settings
-$use_news_approving = true;
-$news_approver_email = 'rr@localhost';
-
 //local database settings
 $dbpconnect = false;
 $dbserver = 'localhost';
@@ -186,16 +179,17 @@ $dberrormail = 'rt@localhost';
 $cachemap_mapper = "lib/mapper_okapi.php";
 
 //Links to blog page on oc site
-$blogsite_url = 'http://blog.opencaching.pl';
+//NOT-USED: $blogsite_url = 'http://blog.opencaching.pl';
 
 //links to forum page on oc site
-$forum_url = 'http://forum.opencaching.pl';
+//NOT-USED: $forum_url = 'http://forum.opencaching.pl';
 
 //links to wiki page on oc site
 // they are available in tpl files under {wiki_link_<name>}, i.e. {wiki_link_forBeginers}
 // protocol agnostic links - just for fun
-$wiki_url  = '//wiki.opencaching.pl';
-$wikiLinks = array(
+//NOT-USED: $wiki_url  = '//wiki.opencaching.pl';
+
+/* NOT-USED: $wikiLinks = array(
     'main'  => $wiki_url,
     'rules' => $wiki_url.'/index.php/Regulamin_OC_PL',
     'rules_en' => $wiki_url.'/index.php/OC_PL_Conditions_of_Use',
@@ -222,6 +216,7 @@ $wikiLinks = array(
     // optional item
     'downloads' => $wiki_url.'/index.php/U%C5%BCyteczne_pliki_zwi%C4%85zane_z_OC_PL',
 );
+*/
 
 $rules_url = 'http://wiki.opencaching.pl/index.php/Regulamin_OC_PL';
 $cache_params_url = 'http://wiki.opencaching.pl/index.php/Parametry_skrzynki';
@@ -277,13 +272,7 @@ $powerTrailMinimumCacheCount = array(
 // user who found less than $powerTrailUserMinimumCacheFoundToSetNewPowerTrail can't create new PT
 $powerTrailUserMinimumCacheFoundToSetNewPowerTrail = 500;
 
-// link to FAQ/info of power trail module
-$powerTrailFaqLink = 'http://info.opencaching.pl/node/13';
-
 /* end of power Trail module switch and settings */
-
-// enables/disables linkage to blog in index.php
-$BlogSwitchOn = true;
 
 // enable detailed cache access logging
 //$enable_cache_access_logs = true;
@@ -291,7 +280,6 @@ $BlogSwitchOn = true;
 // OC specific email addresses for international use - here version for OC.PL.
 $mail_cog = 'cog@opencaching.pl';   // OCPL: reviewers and regional service for cachers
 $mail_rt = 'rt@opencaching.pl';     // OCPL: technical contact
-$mail_rr = 'rr@opencaching.pl';     // OCPL: unused; former RR - to remove
 $mail_oc = 'ocpl@opencaching.pl';   // OCPL: general contact
 
 
@@ -394,23 +382,6 @@ $contactDataDE = array(
 $contactData = $contactDataPL;
 // Contact data definition END
 
-/*
- * Bottom menu
- * See settingsDefault.inc.php for default values
- */
-// You can enable menu item by setting ['link'] and ['visible'] - for example:
-$config['bottom_menu']['impressum']['link'] = 'https://wiki.opencaching.pl/index.php/Opencaching_PL';
-$config['bottom_menu']['impressum']['visible'] = true;
-// You can also use your configured Wiki links:
-$config['bottom_menu']['history']['link'] = $wikiLinks['history'];
-$config['bottom_menu']['history']['visible'] = true;
-// You can disable single menu item:
-$config['bottom_menu']['main_page']['visible'] = false;
-// Or you can even add menu item. But remember - second index is a position from language file (/lib/languages/??.php)
-// and should be added to translation files first (in below case - 'guides').
-$config['bottom_menu']['guides']['link'] = '/cacheguides.php';
-$config['bottom_menu']['guides']['visible'] = true;
-
 // Configuration of license link at footer
 // You can select license and generate HTML at https://creativecommons.org/choose/
 $config['license_html'] = '<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a>';
@@ -432,7 +403,6 @@ $defaultCountryList = array("AT", "BE", "BY", "BG", "HR", "CZ", "DK", "EE", "FI"
  * * second dimension
  * KEYS:
  *  - hidden: boolean attribute to hide the map entirerly, without removing it from config
- *  - showOnlyIfMore: show this map item only in large views (like full screen)
  *  - attribution: the HTML snippet that will be shown in bottom-right part of the map
  *  - imageMapTypeJS: the complete JS expression returning instance of google.maps.ImageMapType,
  *      if set, not other properties below will work
@@ -466,8 +436,7 @@ $mapsConfig = array(
         'attribution' => '&copy; <a href="//www.openstreetmap.org/" target="_blank">OpenStreetMap</a> contributors <a href="//creativecommons.org/licenses/by-sa/2.0/" target="_blank">CC BY-SA</a>',
         'tileUrl' => 'http://tile.openstreetmap.org/{z}/{x}/{y}.png',
         'maxZoom' => 18,
-        'tileSize' => '256x256',
-        'showOnlyIfMore' => true
+        'tileSize' => '256x256'
     ),
     'UMP' => array(
         'name' => 'UMP',
@@ -478,7 +447,6 @@ $mapsConfig = array(
     ),
     'Topo' => array(
         'attribution' => '&copy; <a href="http://geoportal.gov.pl/" target="_blank">geoportal.gov.pl</a>',
-        'showOnlyIfMore' => true,
         'imageMapTypeJS' => 'new google.maps.ImageMapType(new WMSImageMapTypeOptions(
                                         "Topo",
                                         "http://mapy.geoportal.gov.pl:80/wss/service/img/guest/TOPO/MapServer/WmsServer",
@@ -488,7 +456,6 @@ $mapsConfig = array(
     ),
     'Orto' => array(
         'attribution' => '&copy; <a href="http://geoportal.gov.pl/" target="_blank">geoportal.gov.pl</a>',
-        'showOnlyIfMore' => true,
         'imageMapTypeJS' => 'new google.maps.ImageMapType(new WMSImageMapTypeOptions(
                                         "Orto",
                                         "http://mapy.geoportal.gov.pl:80/wss/service/img/guest/ORTO/MapServer/WmsServer",
@@ -561,10 +528,21 @@ $config['maps']['external']['Google Maps'] = 1;
 $config['maps']['external']['Szukacz'] = 1;
 $config['maps']['external']['Flopp\'s Map'] = 0;
 
+// Configuration of feeds displayed on the main page
+$config['feed']['enabled'] = array('forum', 'blog');    // This array defines which feeds to display and in what order.
+                                                        // You can increase feeds number,
+                                                        // but remember to add feed description as feed_{feedname} to language files
+$config['feed']['forum']['url'] = 'https://forum.opencaching.pl/feed.php';  // URL of the feed. System supports RSS and Atom feeds.
+$config['feed']['forum']['posts'] = 5;  // How many newest posts to display
+$config['feed']['forum']['showAuthor'] = true;  // Do display author of post?
+$config['feed']['blog']['url'] = 'http://blog.opencaching.pl/feed/atom/';
+$config['feed']['blog']['posts'] = 5;
+$config['feed']['blog']['showAuthor'] = true;
+
 //To all mails send from our service we can add few prefixes:
 //If you don't want use global prefixes just set $value=""
 //Prefix for all mails sent to users:
 $subject_prefix_for_site_mails = "OCXX";
 //Prefix for all notification and mails sent to cache reviewers
 $subject_prefix_for_reviewers_mails = "R-Team";
-?>
+

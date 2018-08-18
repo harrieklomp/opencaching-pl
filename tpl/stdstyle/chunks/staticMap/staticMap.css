@@ -1,0 +1,54 @@
+
+
+.cssStaticMapMarker .stmCircle {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 10px;
+  height: 10px;
+  border-radius: 20px;
+  border: 2px solid black;
+}
+
+.cssStaticMapMarker .stmTriangleBorder {
+  position: absolute;
+  width: 0; 
+  height: 0;
+  top: 12px;
+  left:2px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 12px solid black;
+
+}
+
+.cssStaticMapMarker .stmTriangle {
+  position: absolute;
+  width: 0; 
+  height: 0;
+  top: 11px;
+  left:4px;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top-style: solid;
+  border-top-width: 9px;
+}
+
+.cssStaticMapMarkerAbs{
+  position: absolute;
+}
+
+.cssStaticMapMarkerRel{
+  position: relative;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  transform: scale(0.70);
+}
+
+
+.staticMapChunk .hovered {
+  transform: scale(1.4,1.4);
+}
+

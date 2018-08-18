@@ -5,12 +5,11 @@
 
 use Utils\Database\XDb;
 use lib\Objects\GeoCache\GeoCache;
+use Utils\EventHandler\EventHandler;
 
 $rootpath = '../../';
 require_once($rootpath . 'lib/ClassPathDictionary.php');
-require_once($rootpath . 'lib/eventhandler.inc.php');
-require_once($rootpath . 'lib/consts.inc.php');
-require_once($rootpath . 'lib/settings.inc.php');
+require_once($rootpath . 'lib/settingsGlue.inc.php');
 
 $rsPublish = XDb::xSql(
                 "SELECT `cache_id`, `user_id`
@@ -27,9 +26,9 @@ while ($rPublish = XDb::xFetchArray($rsPublish)) {
     XDb::xSql("UPDATE `caches` SET `status`=1, `date_activate`=NULL, `last_modified`=NOW() WHERE `cache_id`= ? ", $cacheid);
 
     // send events
+    $cache = GeoCache::fromCacheIdFactory($cacheid);
     GeoCache::touchCache($cacheid);
-    event_new_cache($userid);
-    event_notify_new_cache($cacheid);
+    EventHandler::cacheNew($cache);
+    unset($cache);
 }
 XDb::xFreeResults($rsPublish);
-

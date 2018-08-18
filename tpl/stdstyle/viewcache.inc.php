@@ -1,8 +1,5 @@
 <?php
 
-use Utils\Database\XDb;
-use Utils\Database\OcDb;
-
 $linkargs = (isset($_REQUEST['print']) && $_REQUEST['print'] == 'y') ? '&amp;print=y' : '';
 $linkargs .= (isset($_REQUEST['nocrypt']) && $_REQUEST['nocrypt'] == '1') ? '&amp;nocrypt=1' : '';
 
@@ -25,12 +22,10 @@ if (isset($_REQUEST['print'])) {
 } else
     $logs_to_display = 5;
 
-
-$pictureline = '<a href="{link}">{title}</a><br />';
 $pictures = '<p>{picturelines}</p>';
 
 $logpictureline = '<div class="logimage"><div class="img-shadow">'
-         .'<a class="example-image-link" href="{longdesc}" data-title="{title}" data-lightbox="example-1"><img class="example-image" src="{imgsrc}" alt="{title}" /></a>'
+         .'<a class="example-image-link" href="{longdesc}" data-fancybox="log-picture" data-caption="{title}"><img class="example-image" src="{imgsrc}" alt="{title}" /></a>'
         . '</div><span class="desc">{title}</span>{functions}</div>';
 
 $logpictures = '<div class="viewlogs-logpictures"><span class="info">' . tr('pictures_included') . ':</span><div class="allimages">{lines}</div></div><br style="clear: both" />';
@@ -64,8 +59,6 @@ $show_del_link = '<span style="white-space: nowrap;"><a href="{thispage}?cacheid
 
 $decrypt_table = ' <font face="Courier" size="2" style="font-family : \'Courier New\', FreeMono, Monospace;">A|B|C|D|E|F|G|H|I|J|K|L|M</font>
                                                 <font face="Courier" size="2" style="font-family : \'Courier New\', FreeMono, Monospace;">N|O|P|Q|R|S|T|U|V|W|X|Y|Z</font>';
-
-$spoiler_disable_msg = tr('vc_spoiler_disable_msg');
 
 $error_coords_not_ok = '<br/><img src="tpl/stdstyle/images/misc/32x32-impressum.png" class="icon32" alt=""  />&nbsp;<span class="errormsg">' . tr('bad_coordinates') . '</span>';
 

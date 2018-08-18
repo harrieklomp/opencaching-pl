@@ -1,6 +1,4 @@
-<link rel="stylesheet" href="tpl/stdstyle/js/lightbox2/dist/css/lightbox.min.css">
-<script src="tpl/stdstyle/js/lightbox2/dist/js/lightbox-plus-jquery.min.js"></script>
-<script type="text/javascript">
+<script>
     var rot13tables;
     function createROT13tables() {
         var A = 0, C = [], D = "abcdefghijklmnopqrstuvwxyz", B = D.length;
@@ -59,6 +57,9 @@
     }
     ;
 </script>
+<script>
+    var confirmRmLogTranslation = '{{confirm_remove_log}}';
+</script>
 <script src="{viewcache_js}"></script>
 <div class="content2-container bg-blue02">
     <p class="content-title-noshade-size1">
@@ -76,5 +77,6 @@
 <div class="content2-container" id="viewcache-logs">
     {logs}
 </div>
-<div id="viewlogs-end">[<a class="links" href="viewcache.php?cacheid={cacheid}">{{back_to_the_geocache_listing}}</a>]</div>
-
+<div class="content2-container">
+  <a href="viewcache.php?cacheid={cacheid}" class="btn btn-sm btn-default">{{back_to_the_geocache_listing}}</a>
+</div>

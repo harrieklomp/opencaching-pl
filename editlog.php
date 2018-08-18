@@ -1,10 +1,17 @@
 <?php
 
 use Utils\Database\XDb;
+use Utils\Text\UserInputFilter;
+use lib\Objects\GeoCache\GeoCacheCommons;
+use lib\Objects\GeoCache\GeoCacheLog;
+use lib\Controllers\LogEntryController;
+use lib\Controllers\MeritBadgeController;
+use okapi\Facade;
+use Utils\EventHandler\EventHandler;
+
 //prepare the templates and include all neccessary
 require_once('./lib/common.inc.php');
-require($stylepath . '/smilies.inc.php');
-global $usr;
+global $usr, $config;
 
 //Preprocessing
 if ($error == false) {
@@ -44,6 +51,7 @@ if ($error == false) {
             //is this log from this user?
             if (($log_record['user_id'] == $usr['userid'] && ($usr['admin'] || ($log_record['cachestatus'] != 4 && $log_record['cachestatus'] != 6)))) {
                 $tplname = 'editlog';
+                $view->loadJquery();
 
                 //load settings
                 $cache_name = $log_record['cachename'];
@@ -66,7 +74,7 @@ if ($error == false) {
                     $log_pw = $log_record['logpw'];
 
                 // check if user has exceeded his top5% limit
-                $is_top = XDb::xMultiVariableQueryValue(
+                $userRecoCountForThisCache = XDb::xMultiVariableQueryValue(
                     "SELECT COUNT(`cache_id`) FROM `cache_rating`
                     WHERE `user_id`= :1 AND `cache_id`=:2 ", 0, $log_record['user_id'], $log_record['cache_id']);
 
@@ -76,25 +84,25 @@ if ($error == false) {
                 $user_tops = XDb::xMultiVariableQueryValue(
                     "SELECT COUNT(`user_id`) FROM `cache_rating` WHERE `user_id`= :1 ", 0, $log_record['user_id']);
 
-                if ($is_top == 0) {
-                    if (($user_founds * rating_percentage / 100) < 1) {
+                if ($userRecoCountForThisCache == 0) {
+                    if (($user_founds * GeoCacheCommons::RECOMENDATION_RATIO / 100) < 1) {
                         $top_cache = 0;
-                        $recommendationsNr = 100 / rating_percentage - $user_founds;
+                        $recommendationsNr = 100 / GeoCacheCommons::RECOMENDATION_RATIO - $user_founds;
                         $rating_msg = mb_ereg_replace('{recommendationsNr}', "$recommendationsNr", $rating_too_few_founds);
-                        
-                    } elseif ($user_tops < floor($user_founds * rating_percentage / 100)) {
+
+                    } elseif ($user_tops < floor($user_founds * GeoCacheCommons::RECOMENDATION_RATIO / 100)) {
                         if ($cache_user_id != $usr['userid']) {
                             $rating_msg = mb_ereg_replace('{chk_sel}', '', $rating_allowed . '<br />' . $rating_stat);
                         } else {
                             $rating_msg = mb_ereg_replace('{chk_dis}', ' disabled="disabled"', $rating_own . '<br />' . $rating_stat);
                         }
-                        $rating_msg = mb_ereg_replace('{max}', floor($user_founds * rating_percentage / 100), $rating_msg);
+                        $rating_msg = mb_ereg_replace('{max}', floor($user_founds * GeoCacheCommons::RECOMENDATION_RATIO / 100), $rating_msg);
                         $rating_msg = mb_ereg_replace('{curr}', $user_tops, $rating_msg);
                     } else {
                         $top_cache = 0;
-                        $recommendationsNr = ((1+$user_tops) * 100 / rating_percentage ) - $user_founds;
+                        $recommendationsNr = ((1+$user_tops) * 100 / GeoCacheCommons::RECOMENDATION_RATIO ) - $user_founds;
                         $rating_msg = mb_ereg_replace('{recommendationsNr}', "$recommendationsNr", $rating_too_few_founds);
-                        
+
                         $rating_msg .= '<br />' . $rating_maxreached;
                     }
                 } else {
@@ -103,7 +111,7 @@ if ($error == false) {
                     } else {
                         $rating_msg = mb_ereg_replace('{chk_dis}', ' disabled', $rating_own . '<br />' . $rating_stat);
                     }
-                    $rating_msg = mb_ereg_replace('{max}', floor($user_founds * rating_percentage / 100), $rating_msg);
+                    $rating_msg = mb_ereg_replace('{max}', floor($user_founds * GeoCacheCommons::RECOMENDATION_RATIO / 100), $rating_msg);
                     $rating_msg = mb_ereg_replace('{curr}', $user_tops, $rating_msg);
                 }
 
@@ -114,11 +122,8 @@ if ($error == false) {
                     tpl_set_var('rating_message', "");
                 }
 
-                $descMode = 3;
-
                 // fuer alte Versionen von OCProp
                 if (isset($_POST['submit']) && !isset($_POST['version2'])) {
-                    $descMode = 1;
                     $_POST['submitform'] = $_POST['submit'];
                 }
 
@@ -211,6 +216,7 @@ if ($error == false) {
                     XDb::xSql("UPDATE `cache_moved` SET `date`= ? WHERE log_id = ?",
                         date('Y-m-d H:i:s', mktime($log_date_hour, $log_date_min, 0, $log_date_month, $log_date_day, $log_date_year)),
                         $log_id);
+                    LogEntryController::recalculateMobileMovesByCacheId($log_record['cache_id']);
                 }
 
                 //store?
@@ -237,8 +243,8 @@ if ($error == false) {
                         WHERE `id`=?",
                             /*1*/$log_type,
                             /*2*/date('Y-m-d H:i:s', mktime($log_date_hour, $log_date_min, 0, $log_date_month, $log_date_day, $log_date_year)),
-                            /*3*/userInputFilter::purifyHtmlString((($descMode != 1) ? $log_text : nl2br($log_text))),
-                            /*4*/1, /*5*/1, $usr['userid'], $log_id);
+                            /*3*/UserInputFilter::purifyHtmlString(((true) ? $log_text : nl2br($log_text))),
+                            /*4*/2, /*5*/1, $usr['userid'], $log_id);
                     } else {
                         XDb::xSql(
                             "UPDATE `cache_logs`
@@ -247,8 +253,8 @@ if ($error == false) {
                         WHERE `id`=?",
                             /*1*/$log_type,
                             /*2*/date('Y-m-d H:i:s', mktime($log_date_hour, $log_date_min, 0, $log_date_month, $log_date_day, $log_date_year)),
-                            /*3*/userInputFilter::purifyHtmlString((($descMode != 1) ? $log_text : nl2br($log_text))),
-                            /*4*/1, /*5*/1, $usr['userid'], $log_id);
+                            /*3*/UserInputFilter::purifyHtmlString(((true) ? $log_text : nl2br($log_text))),
+                            /*4*/2, /*5*/1, $usr['userid'], $log_id);
                     }
 
                     //update user-stat if type changed
@@ -289,7 +295,7 @@ if ($error == false) {
                             $user_record['log_notes_count'] --;
                         }
 
-                        // falls eines der felder NULL
+                        // for the case that one of the fields is NULL
                         $user_record['founds_count'] = $user_record['founds_count'] + 0;
                         $user_record['notfounds_count'] = $user_record['notfounds_count'] + 0;
                         $user_record['log_notes_count'] = $user_record['log_notes_count'] + 0;
@@ -316,8 +322,7 @@ if ($error == false) {
                         unset($user_record);
 
                         //call eventhandler
-                        require_once($rootpath . 'lib/eventhandler.inc.php');
-                        event_change_log_type($log_record['cache_id'], $log_record['user_id'] + 0);
+                        EventHandler::event_change_log_type($log_record['user_id'] + 0);
                     }
 
                     //update cache-stat if type or log_date changed
@@ -337,7 +342,7 @@ if ($error == false) {
                             $cache_record['notes'] --;
                         }
 
-                        // falls eines der felder NULL
+                        // for the case that one of the fields is NULL
                         $cache_record['founds'] = $cache_record['founds'] + 0;
                         $cache_record['notfounds'] = $cache_record['notfounds'] + 0;
                         $cache_record['notes'] = $cache_record['notes'] + 0;
@@ -365,9 +370,8 @@ if ($error == false) {
 
                     // Notify OKAPI's replicate module of the change.
                     // Details: https://github.com/opencaching/okapi/issues/265
-                    require_once($rootpath . 'okapi/facade.php');
-                    \okapi\Facade::schedule_user_entries_check($log_record['cache_id'], $log_record['user_id']);
-                    \okapi\Facade::disable_error_handling();
+                    Facade::schedule_user_entries_check($log_record['cache_id'], $log_record['user_id']);
+                    Facade::disable_error_handling();
 
                     //Update last found
                     $lastFoundDate = XDb::xMultiVariableQueryValue(
@@ -380,10 +384,35 @@ if ($error == false) {
                         $lastFoundDate, $cache_record['founds'], $cache_record['notfounds'],
                         $cache_record['notes'], $log_record['cache_id']);
 
+
+                    $badgetParam = "";
+                    if ($config['meritBadges']){
+
+                        $cache_id = $log_record['cache_id'];
+                        if ($log_type == GeoCacheLog::LOGTYPE_FOUNDIT ||
+                            $log_type == GeoCacheLog::LOGTYPE_ATTENDED ){
+
+                            $ctrlMeritBadge = new MeritBadgeController;
+
+                            $changedLevelBadgesIds = $ctrlMeritBadge->updateTriggerLogCache($cache_id, $usr['userid']);
+                            $titledIds= $ctrlMeritBadge->updateTriggerTitledCache($cache_id, $usr['userid']);
+
+                            if ( $changedLevelBadgesIds != "" && $titledIds!= "")
+                                $changedLevelBadgesIds .= ",";
+
+                            $changedLevelBadgesIds .= $titledIds;
+
+                            if ( $changedLevelBadgesIds != "" )
+                                $badgetParam = "&badgesPopupFor=" . $changedLevelBadgesIds;
+
+                            $ctrlMeritBadge->updateTriggerCacheAuthor($cache_id);
+                        }
+                    }
+
                     unset($cache_record);
 
                     //display cache page
-                    tpl_redirect('viewcache.php?cacheid=' . urlencode($log_record['cache_id']));
+                    tpl_redirect('viewcache.php?cacheid=' . urlencode($log_record['cache_id']) . $badgetParam);
                     exit;
                 }
 
@@ -409,7 +438,7 @@ if ($error == false) {
 
                 //build logtypeoptions
                 $logtypeoptions = '';
-                foreach ($log_types AS $type) {
+                foreach (get_log_types_from_database() AS $type) {
                     // skip if permission=O ???? and not owner or COG
                     if ($type['permission'] == 'B' && $log_record['user_id'] != $cache_user_id && !($usr['admin']))
                         continue;
@@ -449,7 +478,7 @@ if ($error == false) {
                     }
 
 
-                    if (checkField('log_types', $lang))
+                    if (XDb::xContainsColumn('log_types', $lang))
                         $lang_db = $lang;
                     else
                         $lang_db = "en";
@@ -475,9 +504,8 @@ if ($error == false) {
                 tpl_set_var('date_message', ($date_not_ok == true) ? $date_message : '');
                 tpl_set_var('bodyMod', ' onload="chkMoved()"');
 
-                $log_text = userInputFilter::purifyHtmlStringAndDecodeHtmlSpecialChars($log_text);
+                $log_text = UserInputFilter::purifyHtmlStringAndDecodeHtmlSpecialChars($log_text, $log_record['text_html']);
                 tpl_set_var('logtext', htmlspecialchars($log_text, ENT_NOQUOTES, 'UTF-8'), true);
-                tpl_set_var('descMode', $descMode);
 
                 if ($use_log_pw == true && $log_pw != '') {
                     if ($pw_not_ok == true && isset($_POST['submitform'])) {
@@ -489,22 +517,7 @@ if ($error == false) {
                     tpl_set_var('log_pw_field', '');
                 }
 
-                // build smilies
-                $smilies = '';
-                for ($i = 0; $i < count($smileyshow); $i++) {
-                    if ($smileyshow[$i] == '1') {
-                        $tmp_smiley = $smiley_link;
-                        $tmp_smiley = mb_ereg_replace('{smiley_image}', $smileyimage[$i], $tmp_smiley);
-                        $smilies = $smilies . mb_ereg_replace('{smiley_text}', ' ' . $smileytext[$i] . ' ', $tmp_smiley) . '&nbsp;';
-                    }
-                }
-                tpl_set_var('smilies', $smilies);
 
-                if ($descMode != 3) {
-                    tpl_set_var('smiliesdisplay', '');
-                } else {
-                    tpl_set_var('smiliesdisplay', 'none');
-                }
             } else {
                 header('Location: viewcache.php?cacheid=' . $log_record['cache_id']);
             }

@@ -5,6 +5,7 @@ namespace lib\Objects\PowerTrail;
 use Utils\Database\OcDb;
 use lib\Objects\User\User;
 use lib\Objects\PowerTrail\PowerTrail;
+use Utils\Generators\Uuid;
 
 class Log
 {
@@ -120,9 +121,12 @@ class Log
             ddd('TODO');
         } else {
             if($this->type === self::TYPE_ADD_WARNING && $this->user->getIsAdmin() === false){
-                return false; /* regular user is not allowed to add entery of this type */
+                return false; /* regular user is not allowed to add entry of this type */
             }
-            $query = 'INSERT INTO `PowerTrail_comments`(`userId`, `PowerTrailId`, `commentType`, `commentText`, `logDateTime`, `dbInsertDateTime`, `deleted`) VALUES (:1, :2, :3, :4, :5, NOW(),0)';
+            $query = 'INSERT INTO `PowerTrail_comments`
+                      (`userId`, `PowerTrailId`, `commentType`, `commentText`,
+                       `logDateTime`, `dbInsertDateTime`, `deleted`, uuid)
+                      VALUES (:1, :2, :3, :4, :5, NOW(),0, '.Uuid::getSqlForUpperCaseUuid().')';
             $db->multiVariableQuery($query, $this->user->getUserId(), $this->powerTrail->getId(), $this->type, $this->text, $this->dateTime->format('Y-m-d H:i:s'));
             if($this->type == self::TYPE_CONQUESTED){
                 $this->powerTrail->increaseConquestedCount();

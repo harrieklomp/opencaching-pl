@@ -1,0 +1,42 @@
+<div style="font-size: 12px; font-family: Verdana;">
+  <p>{{watchlist_intro}}</p>
+
+  <div style="display: {cachesOwnedDisplay}">
+    <p>{{watchlist_intro_owned}}:</p>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="border: 1px solid #ccc; padding: 5px 2px; font-size: 11px;">{{watchlist_datetime}}</th>
+          <th style="border: 1px solid #ccc; padding: 5px 2px; font-size: 11px;">{{watchlist_logger}}</th>
+          <th style="border: 1px solid #ccc; padding: 5px 2px; font-size: 11px;">{{type_of_log}}</th>
+          <th style="border: 1px solid #ccc; padding: 5px 2px; font-size: 11px;">{{watchlist_cache}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ownerlogs}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display: {cachesWatchedDisplay}">
+    <p>{{watchlist_intro_watched}}:</p>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="border: 1px solid #ccc; padding: 5px 2px; font-size: 11px;">{{watchlist_datetime}}</th>
+          <th style="border: 1px solid #ccc; padding: 5px 2px; font-size: 11px;">{{watchlist_logger}}</th>
+          <th style="border: 1px solid #ccc; padding: 5px 2px; font-size: 11px;">{{type_of_log}}</th>
+          <th style="border: 1px solid #ccc; padding: 5px 2px; font-size: 11px;">{{watchlist_cache}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {watchlogs}
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    {{watchlist_canbefound}} <a href="{absolute_server_URI}mywatches.php">{{watchlist_clickhere}}</a>
+  </p>
+  <p>{{notify_freq}} <a href="{urlNotifySettings}">{urlNotifySettings}</a></p>
+</div>

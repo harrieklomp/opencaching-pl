@@ -1,6 +1,7 @@
 <?php
 
 use Utils\Database\XDb;
+use Utils\EventHandler\EventHandler;
 
 //prepare the templates and include all neccessary
 require_once('./lib/common.inc.php');
@@ -27,7 +28,7 @@ if ($error == false) {
         if (isset($_POST['submit'])) {
             //load datas from form
             $statpic_text = isset($_POST['statpic_text']) ? mb_substr($_POST['statpic_text'], 0, 30) : 'Opencaching';
-            $statpic_logo = isset($_POST['statpic_logo']) ? $_POST['statpic_logo'] + 0 : 0;
+            $statpic_logo = isset($_POST['statpic_logo']) ? (integer) $_POST['statpic_logo'] : 0;
 
             tpl_set_var('statpic_text', $statpic_text);
             tpl_set_var('statpic_logo', $statpic_logo);
@@ -38,16 +39,15 @@ if ($error == false) {
 
             //try to save
             if (!($statpic_text_not_ok)) {
-                //in DB updaten
+                //update in DB
                 XDb::xSql(
                     "UPDATE `user` SET `statpic_text`= ?, `statpic_logo`= ?
                      WHERE `user_id`= ? ", $statpic_text, $statpic_logo, $usr['userid']);
 
                 //call eventhandler
-                require_once($rootpath . 'lib/eventhandler.inc.php');
-                event_change_statpic($usr['userid'] + 0);
+                EventHandler::event_change_statpic($usr['userid'] + 0);
 
-                //wieder normal anzeigen
+                //back to normal display
                 tpl_redirect('myprofile.php');
             } else {
                 tpl_set_var('statpic_text_message', $error_statpic_text);

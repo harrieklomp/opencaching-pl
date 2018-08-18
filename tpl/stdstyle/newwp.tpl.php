@@ -1,7 +1,5 @@
-<?php
 
-?>
-<script type="text/javascript">
+<script>
     function _chkType()
     {
         var nextstage = document.forms['waypoints_form'].nextstage.value;
@@ -143,7 +141,7 @@
                         </tr>
                     </table>
                 </td>
-            </tr>        
+            </tr>
         <tr><td class="buffer" colspan="2"></td></tr>
         <tr>
             <td valign="top" align="left" colspan="2">

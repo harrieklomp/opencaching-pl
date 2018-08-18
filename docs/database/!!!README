@@ -69,7 +69,7 @@ bulletins
 cache_arch
 	Archived caches
 cache_attrib
-	Define cache attributes and translations. 
+	Define cache attributes and translations.
     DEPRECATED by https://github.com/opencaching/opencaching-pl/issues/462
 cache_coordinates
 	Cache coordinates and last modification date on coordinates
@@ -122,7 +122,7 @@ countries
 	Contains country names as translation strings and definition flags
 	FIXME: is this still valid?
 email_schemas
-	FIXME
+	Schemas of e-mails are sent to users while reports management
 email_user
 	FIXME
 foreign_caches
@@ -180,8 +180,6 @@ log_types_text
     FIXME: is this still valid?
 logentries
 	FIXME
-logentries_types
-	FIXME
 map_settings
 	FIXME
 map_settings_v2
@@ -191,9 +189,7 @@ medals
 mp3
 	FIXME
 news
-	FIXME
-news_topics
-	FIXME
+	News displayed on main page and News page
 notify_waiting
 	FIXME
 npa_areas
@@ -251,7 +247,15 @@ queries
 removed_objects
 	FIXME
 reports
-	FIXME
+	Reports of caches and PowerTrails
+reports_log
+    All activity related to Reports
+reports_poll
+    Polls used in Reports
+reports_poll_votes
+    Votes in polls (used in Reports)
+reports_watches
+    Stores info about OC Team users who watches reports
 route_points
 	FIXME
 routes
@@ -278,11 +282,10 @@ transaction_test
 	FIXME
 user
 	registered users info
-user_backup_201403032233
-	backup of table user and date of creation.
-	FIXME: purpose? (seems very old)
 user_finds
 	FIXME
+user_neighbourhoods
+    Stores additional user MyNeighborhood areas
 user_nick_history
 	FIXME: seems a history of username changes
 user_settings
@@ -311,3 +314,4 @@ Changelog
 ---------
 2016-03-05: created by andrixnet. Documented only what I managed to
 	investigate so far.
+2018-02-08: add user_neighbourhoods table and delete backup user table (deg-pl)

@@ -2,8 +2,8 @@
 global $rootpath;
 ?>
 
-<script src="lib/js/gmap.<?= date("YmdHis", filemtime($rootpath . 'lib/js/gmap.js')) ?>.js" type="text/javascript"></script>
-<script type="text/javascript">
+<script src="lib/js/gmap.<?= date("YmdHis", filemtime($rootpath . 'lib/js/gmap.js')) ?>.js"></script>
+<script>
 //<![CDATA[
     function checkForm()
     {
@@ -150,6 +150,11 @@ global $rootpath;
         </tr>
     </table>
     <script>
+var map_params = {
+    lat: {map_lat},
+    lon: {map_lon},
+    zoom: {map_zoom},
+};
         window.onload = load;
     </script>
     <div id="loadingMessage" style="display:none;">{{route_05}}</div>

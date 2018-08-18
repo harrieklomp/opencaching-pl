@@ -13,6 +13,12 @@ require_once('./lib/common.inc.php');
 $uuid = isset($_REQUEST['uuid']) ? $_REQUEST['uuid'] : '';
 $debug = isset($_REQUEST['debug']) ? $_REQUEST['debug'] : 0;
 
+// thumbs-dir/url
+global $picdir, $picurl;
+$thumbdir = $picdir . '/thumbs';
+$thumburl = $picurl . '/thumbs';
+
+
 if ($error == false) {
     require_once($stylepath . '/thumbs.inc.php');
 
@@ -44,7 +50,7 @@ if ($error == false) {
             else
                 tpl_redirect_absolute($imgurl_intern);
 
-        // thumb neu erstellen?
+        // create new thumb?
         $bGenerate = false;
         if (strtotime($r['thumb_last_generated']) < strtotime($r['last_modified']))
             $bGenerate = true;
@@ -53,7 +59,7 @@ if ($error == false) {
             $bGenerate = true;
 
         if ($bGenerate) {
-            // Bild erstellen
+            // create picture
 
             if ($r['unknown_format'] == 1)
                 if ($debug == 1)
@@ -61,7 +67,7 @@ if ($error == false) {
                 else
                     tpl_redirect_absolute($imgurl_format);
 
-            // ok, mal kucken ob das Dateiformat unterstützt wird
+            // ok, let's see if the file format is supported
             $filename = $urlparts[count($urlparts) - 1];
             $filenameparts = mb_split('\\.', $filename);
             $extension = mb_strtolower($filenameparts[count($filenameparts) - 1]);
@@ -123,11 +129,11 @@ if ($error == false) {
                 $thumbheight = $imheight;
             }
 
-            // Thumb erstellen und speichern
+            // create and save thumb
             $thumbimage = imagecreatetruecolor($thumbwidth, $thumbheight);
             imagecopyresampled($thumbimage, $im, 0, 0, 0, 0, $thumbwidth, $thumbheight, $imwidth, $imheight);
 
-            // verzeichnis erstellen
+            // create directory
             if (!file_exists($thumbdir . '/' . mb_substr($filename, 0, 1)))
                 mkdir($thumbdir . '/' . mb_substr($filename, 0, 1));
             if (!file_exists($thumbdir . '/' . mb_substr($filename, 0, 1) . '/' . mb_substr($filename, 1, 1)))
@@ -180,5 +186,4 @@ if ($error == false) {
     exit;
 }
 
-tpl_BuildTemplate(false);
-
+tpl_BuildTemplate();

@@ -1,24 +1,48 @@
-<table class="content" width="97%">
-    <tr><td class="content2-pagetitle"><img src="tpl/stdstyle/images/blue/stat1.png" class="icon32" alt="Statystyki" title="Statystyki" align="middle" /><font size="4">  <b>{{statistics}}</b></font></td></tr>
-    <tr><td class="spacer"></td></tr>
-</table>
-
-<script type="text/javascript">
-    TimeTrack("START");
-</script>
-
 <?php
-global $debug_page;
-if ($debug_page)
-    echo "<script type='text/javascript'>TimeTrack( 'DEBUG' );</script>";
+use Utils\Database\XDb;
+
+    require_once('./lib/common.inc.php');
 ?>
 
-<table class="table" width="760" style="line-height: 1.6em; font-size: 10px;">
+<div class="content2-container">
+<p class="content-title-noshade-size3">{{Stats_t4_01}}</p>
+<table class="table full-width table-striped">
+  <thead>
     <tr>
-        <td><?php include ("t4.php"); ?>
-        </td></tr>
-</table>
+      <th class="align-center">{{Position}}</th>
+      <th class="align-center">{{Stats_t4_03}}</th>
+      <th>{{Stats_t4_04}}</th>
+    </tr>
+  </thead>
+  <tbody>
 
-<script type="text/javascript">
-    TimeTrack("END", "S4");
-</script>
+<?php
+$results = XDb::xSql(
+    "SELECT `caches`.`founds` AS `count`, `caches`.`name`, `caches`.`cache_id`, `user`.`username`, `user`.`user_id`
+    FROM `caches`
+        INNER JOIN `user` ON `caches`.`user_id`=`user`.`user_id`
+    WHERE `caches`.`type` NOT IN (4, 5, 6) AND `caches`.`status` = 1 AND `caches`.`founds` > 0 ORDER BY `count` DESC, `caches`.`name` ASC");
+
+$position = 0;
+$prevCount = 0;
+while ($result = XDb::xFetchArray($results)) {
+    if ($result['count'] != $prevCount ) {
+        $position++;
+        $prevCount = $result['count'];
+        if ($position == 1) {
+            echo '<tr>';
+        } else {
+            echo '</td></tr><tr>';
+        }
+        echo "<td class=\"align-center\">" . $position . "</td><td class=\"align-center\">" .  $result['count'] . "</td><td>";
+    } else {
+        echo " | ";
+    }
+    echo '<a href="/viewcache.php?cacheid=' . $result['cache_id'] . '" class="links">' . $result['name'] . '</a> (<a href="/viewprofile.php?userid='. $result['user_id'] .'" class="links">' . $result['username'] . '</a>)';
+}
+?>
+      </td>
+    </tr>
+  </tbody>
+</table>
+</div>

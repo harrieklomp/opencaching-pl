@@ -1,10 +1,7 @@
 <?php
 
 use Utils\Database\XDb;
-// Unicode Reminder ??
-setlocale(LC_TIME, 'pl_PL.UTF-8');
-//setlocale(LC_TIME, 'pl_PL.ISO-8859-2');
-//prepare the templates and include all neccessary
+
 require_once('./lib/common.inc.php');
 global $dynbasepath;
 
@@ -48,7 +45,7 @@ XDb::xFreeResults($rs);
 $userid = $userid + 0;
 
 if (!file_exists($dynbasepath . 'images/statpics/statpic' . $userid . '.jpg')) {
-    // Bild existiert nicht => neu erstellen
+    // picture does not exist => create new
     $rs = XDb::xSql(
         "SELECT `tplpath`, `maxtextwidth` FROM `statpics` WHERE `id`= ? LIMIT 1", $logo);
 
@@ -130,6 +127,6 @@ if (!file_exists($dynbasepath . 'images/statpics/statpic' . $userid . '.jpg')) {
     ImageDestroy($im);
 }
 
-// Redirect auf das gespeicherte Bild
+// redirect to the saved picture
 tpl_redirect('images/statpics/statpic' . $userid . '.jpg');
 

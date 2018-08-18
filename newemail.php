@@ -1,7 +1,7 @@
 <?php
 
 use Utils\Database\XDb;
-use Utils\Email\Email;
+use Utils\Text\Validator;
 
 //prepare the templates and include all neccessary
 global $octeamEmailsSignature, $absolute_server_URI;
@@ -25,7 +25,7 @@ if ($error == false) {
         tpl_set_var('email_message', '');
         tpl_set_var('code_message', '');
         tpl_set_var('change_email', $change_email);
-        tpl_set_var('reset', $reset);
+        tpl_set_var('reset', tr('reset'));
         tpl_set_var('getcode', $get_code);
 
         if (isset($_POST['submit_getcode']) || isset($_POST['submit_changeemail'])) {
@@ -37,7 +37,7 @@ if ($error == false) {
             $email_exists = false;
             $new_email_not_ok = false;
 
-            if (!Email::isValidEmail($new_email)) {
+            if (! Validator::isValidEmail($new_email)) {
                 $new_email_not_ok = true;
                 tpl_set_var('email_message', $error_email_not_ok);
             } else {
@@ -70,10 +70,19 @@ if ($error == false) {
                     $email_content = mb_ereg_replace('{newEmailAddr_06}', tr('newEmailAddr_06'), $email_content);
                     $email_content = mb_ereg_replace('{newEmailAddr_07}', tr('newEmailAddr_07'), $email_content);
                     $email_content = mb_ereg_replace('{user}', $usr['username'], $email_content);
-                    $email_content = mb_ereg_replace('{date}', strftime($datetimeformat), $email_content);
+                    $email_content = mb_ereg_replace('{date}', strftime(
+                        $GLOBALS['config']['datetimeformat']), $email_content);
                     $email_content = mb_ereg_replace('{code}', $secure_code, $email_content);
                     $email_content = mb_ereg_replace('{octeamEmailsSignature}', $octeamEmailsSignature, $email_content);
-                    //email versenden
+
+
+                    global $emailaddr;
+
+                    $emailheaders = "Content-Type: text/plain; charset=utf-8\r\n";
+                    $emailheaders .= "Content-Transfer-Encoding: 8bit\r\n";
+                    $emailheaders .= 'From: "' . $emailaddr . '" <' . $emailaddr . '>';
+
+
                     mb_send_mail($new_email, $email_subject, $email_content, $emailheaders);
 
                     tpl_set_var('message', $email_send);

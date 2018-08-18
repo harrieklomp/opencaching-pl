@@ -2,14 +2,7 @@
 
 use Utils\Database\XDb;
 use lib\Objects\GeoCache\PrintList;
-function onTheList($theArray, $item)
-{
-    for ($i = 0; $i < count($theArray); $i++) {
-        if ($theArray[$i] == $item)
-            return $i;
-    }
-    return -1;
-}
+
 
 function getDBFilter($userid)
 {
@@ -142,13 +135,12 @@ function makeDBFilter()
 
 require_once('./lib/common.inc.php');
 $tplname = 'cachemap2';
-tpl_set_var('bodyMod', ' onload="load()" onunload="GUnload()"');
-//tpl_set_var('BodyMod', ' onload="load()" onunload="GUnload()"');
+tpl_set_var('bodyMod', ' onload="load()"');
+
 global $usr;
 global $get_userid;
 global $filter;
 global $caches_list;
-global $language;
 global $lang;
 
 $userid = '';
@@ -209,8 +201,8 @@ if ($usr == false) {
     }
 
     /* SET YOUR MAP CODE HERE */
-    tpl_set_var('cachemap_header', '<script src="//maps.google.com/maps?file=api&amp;v=2.x&amp;key=' . $googlemap_key . '" type="text/javascript"></script>
-    <script language="JavaScript1.2" type="text/javascript">
+    tpl_set_var('cachemap_header', '<script src="//maps.google.com/maps?file=api&amp;v=2.x&amp;key=' . $googlemap_key . '"></script>
+    <script language="JavaScript1.2">
         window.onbeforeunload = saveMapType;
         function saveMapType(){
             var ajaxRequest;  // The variable that makes Ajax possible!

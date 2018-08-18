@@ -3,36 +3,70 @@
 use Utils\Database\OcDb;
 use Utils\Database\XDb;
 use lib\Objects\GeoCache\PrintList;
+use Utils\Text\TextConverter;
+use Utils\Uri\OcCookie;
 
-    //prepare the templates and include all neccessary
-    if (!isset($rootpath)) $rootpath = '';
-    require_once('./lib/common.inc.php');
-    require_once('./lib/search.inc.php');
-    require_once('./lib/search-signatures.inc.php');
-    global $dbcSearch, $lang, $TestStartTime, $usr;
+//prepare the templates and include all neccessary
+if (!isset($rootpath)) $rootpath = '';
 
-    //4test
-    $TestStartTime = new DateTime('now');
+require_once('./lib/common.inc.php');
+require_once('./lib/search.inc.php');
+require_once('./lib/search-signatures.inc.php');
+require_once('./lib/export.inc.php');
+require_once('./lib/calculation.inc.php');
 
-    $dbcSearch = OcDb::instance();
-    $dbc = OcDb::instance();
+global $dbcSearch, $lang, $TestStartTime, $usr;
 
-    // extract user data for KML search
-    $usr = requestSigner::extract_user($usr);
-    if ($usr == false) {
-        $target = urlencode(tpl_get_current_page());
-        tpl_redirect('login.php?target='.$target);
-        exit;
+
+//returns the cookie value, otherwise false
+function get_cookie_setting($name)
+{
+    return OcCookie::getOrDefault($name, false);
+}
+
+//sets the cookie value
+function set_cookie_setting($name, $value)
+{
+    OcCookie::set($name, $value);
+}
+
+/**
+ * add slashes to each element of $array.
+ * @param array $array
+ */
+function sanitize(&$array)
+{
+    foreach ($array as $key => $value) {
+        if (is_array($value)) {
+            sanitize($value);
+        } else {
+            $array[$key] = addslashes(htmlspecialchars($value));
+        }
     }
+}
 
-    //Preprocessing
-    if ($error == false) {
+
+//4test
+$TestStartTime = new DateTime('now');
+
+$dbcSearch = OcDb::instance();
+$dbc = OcDb::instance();
+
+// extract user data for KML search
+$usr = requestSigner::extract_user($usr);
+if ($usr == false) {
+    $target = urlencode(tpl_get_current_page());
+    tpl_redirect('login.php?target='.$target);
+    exit;
+}
+
 
         $tplname = 'search';
+        $view->loadJQueryUI();
         require($stylepath . '/search.inc.php');
         require($rootpath . 'lib/caches.inc.php');
 
-        common::sanitize($_REQUEST);
+        sanitize($_REQUEST);
 
         //km => target-unit
         $multiplier['km'] = 1;
@@ -46,7 +80,8 @@ use lib\Objects\GeoCache\PrintList;
         else
         {
             $bCookieQueryid = true;
-            $queryid = get_cookie_setting('lastqueryid');
+            $queryid = (isset($_REQUEST['resetqueryid'])) ? false : get_cookie_setting('lastqueryid');
+//            $queryid = get_cookie_setting('lastqueryid');
             if ($queryid == false) $queryid = 0;
 
             if ($queryid != 0)
@@ -63,7 +98,7 @@ use lib\Objects\GeoCache\PrintList;
 
             if ($queryid == 0)
             {
-                // das Suchformular wird initialisiert (keine Vorbelegungen vorhanden)
+                // initialize the search form (no presets exist)
                 $_REQUEST['cache_attribs'] = '';
                 $rs = XDb::xSql('SELECT `id` FROM `cache_attrib` WHERE `default`=1');
                 while ($r = XDb::xFetchArray($rs))
@@ -112,7 +147,7 @@ use lib\Objects\GeoCache\PrintList;
                 $sqlstr = "UPDATE `queries` SET `last_queried`=NOW() WHERE `id`= :1";
                 $s = $dbc->multiVariableQuery($sqlstr, $queryid );
 
-                // Ă¤nderbare werte Ăźberschreiben
+                // overwrite changeable values
                 if (isset($_REQUEST['output']))
                     $options['output'] =  $_REQUEST['output'];
 
@@ -128,7 +163,7 @@ use lib\Objects\GeoCache\PrintList;
                     }
                 }
 
-                // finderid in finder umsetzen
+                // get finder from finderid
                 $options['finderid'] = isset($options['finderid']) ? $options['finderid'] + 0 : 0;
                 if(isset($options['finder']) && $options['finderid'] > 0)
                 {
@@ -143,7 +178,7 @@ use lib\Objects\GeoCache\PrintList;
                     unset($record_name);
                 }
 
-                // ownerid in owner umsetzen
+                // get owner from ownerid
                 $options['ownerid'] = isset($options['ownerid']) ? $options['ownerid'] + 0 : 0;
                 if(isset($options['owner']) && $options['ownerid'] > 0)
                 {
@@ -312,7 +347,7 @@ use lib\Objects\GeoCache\PrintList;
                     $options['searchtype'] = 'bywaypoint';
                     $options['waypoint'] = isset($_REQUEST['waypoint']) ? $_REQUEST['waypoint'] : '';
                 }
-                $options['waypoint'] = mb_trim($options['waypoint']);
+                $options['waypoint'] = TextConverter::mb_trim($options['waypoint']);
                 $options['waypointtype'] = mb_strtolower(mb_substr($options['waypoint'], 0, 2));
                 $ocWP=strtolower($GLOBALS['oc_waypoint']);
                 if ( mb_ereg_match('(oc|'.$ocWP.'[a-z0-9]{4})$', mb_strtolower($options['waypoint'])) ) //O?xxxx
@@ -367,6 +402,7 @@ use lib\Objects\GeoCache\PrintList;
             $options['cachesize_5'] = isset($_REQUEST['cachesize_5']) ? $_REQUEST['cachesize_5'] : 1;
             $options['cachesize_6'] = isset($_REQUEST['cachesize_6']) ? $_REQUEST['cachesize_6'] : 1;
             $options['cachesize_7'] = isset($_REQUEST['cachesize_7']) ? $_REQUEST['cachesize_7'] : 1;
+            $options['cachesize_8'] = isset($_REQUEST['cachesize_8']) ? $_REQUEST['cachesize_8'] : 1;
 
             $options['cachevote_1'] = isset($_REQUEST['cachevote_1']) ? $_REQUEST['cachevote_1'] : '';
             $options['cachevote_2'] = isset($_REQUEST['cachevote_2']) ? $_REQUEST['cachevote_2'] : '';
@@ -438,9 +474,9 @@ use lib\Objects\GeoCache\PrintList;
                 $sql_group = array();
 
                 // show only published caches
-                $sql_where[] = '`caches`.`status` != 4';
-                $sql_where[] = '`caches`.`status` != 5';
-                if(!$usr['admin'])
+                $sql_where[] = '(`caches`.`status` != 4 OR `caches`.`user_id`=' . XDb::xEscape($usr['userid']) . ')';
+                $sql_where[] = '(`caches`.`status` != 5 OR `caches`.`user_id`=' . XDb::xEscape($usr['userid']) . ')';
+                if (!$usr['admin'])
                 {
                     $sql_where[] = '`caches`.`status` != 6';
                 }
@@ -495,13 +531,13 @@ use lib\Objects\GeoCache\PrintList;
                             }
                             else
                             {
-                                // ok, viele locations ... alle auflisten ...
+                                // ok, many locations ... list them all ...
                                 outputLocidSelectionForm($sqlstr, $options);
                                 exit;
                             }
                         }
 
-                        // ok, wir haben einen ort ... koordinaten ermitteln
+                        // ok, we have a location ... determine the coordinates
                         $locid = $locid + 0;
 
                         $sqlstr = "SELECT `lon`, `lat` FROM `geodb_coordinates` WHERE `loc_id`= :1 AND coord_type=200100000 LIMIT 1";
@@ -509,7 +545,7 @@ use lib\Objects\GeoCache\PrintList;
 
                         if ( $dbc->rowCount($s) ){
 
-                            // ok ... wir haben koordinaten ...
+                            // ok ... we have coordinates
                             $r = $dbc->dbResultFetch($s);
 
                             $lat = $r['lat'] + 0;
@@ -518,7 +554,7 @@ use lib\Objects\GeoCache\PrintList;
                             $distance_unit = 'km';
                             $distance = 20;
 
-                            // ab hier selber code wie bei bydistance ... TODO: in funktion auslagern
+                            // from here on same code like bydistance ... TODO: move to a function
 
                             //all target caches are between lat - max_lat_diff and lat + max_lat_diff
                             $max_lat_diff = $distance / (111.12 * $multiplier[$distance_unit]);
@@ -594,13 +630,13 @@ use lib\Objects\GeoCache\PrintList;
                                 outputSearchForm($options);
                             }
 
-                            // temporĂ¤re tabelle erstellen und dann eintrĂ¤ge entfernen, die nicht mindestens so oft vorkommen wie worte gegeben wurden
+                            // create temporary table and then remove entries that have less occurrences than words were given
                             XDb::xSql('CREATE TEMPORARY TABLE tmpuniids (`uni_id` int(11) NOT NULL, `cnt` int(11) NOT NULL, `olduni` int(11) NOT NULL, `simplehash` int(11) NOT NULL) ENGINE=MEMORY SELECT `gns_search`.`uni_id` `uni_id`, 0 `cnt`, 0 `olduni`, `simplehash` FROM `gns_search` WHERE ' . $sqlhashes);
                             XDb::xSql('ALTER TABLE `tmpuniids` ADD INDEX (`uni_id`)');
-//  BUGFIX: dieser Code sollte nur ausgefĂźhrt werden, wenn mehr als ein Suchbegriff eingegeben wurde
-//                  damit alle EintrĂ¤ge gefiltert, die nicht alle Suchbegriffe enthalten
-//                  nun wird dieser Quellcode auch ausgefĂźhrt, um mehrfache uni_id's zu filtern
-//          Notwendig, wenn nach Baden gesucht wird => Baden-Baden war doppelt in der Liste
+//  BUGFIX: This code should only be executed, if more than one search keyword was entered,
+//          so that all entries are fileters, which do not contain all keywords;
+//          now this code is also executed to filter multiple uni_id's.
+//          Necessary, if searching for "Baden" => the town "Baden-Baden" was duplicate in the list.
 //                          if ($wordscount > 1)
 //                          {
                                 XDb::xSql('CREATE TEMPORARY TABLE `tmpuniids2` (`uni_id` int(11) NOT NULL, `cnt` int(11) NOT NULL, `olduni` int(11) NOT NULL) ENGINE=MEMORY SELECT `uni_id`, COUNT(*) `cnt`, 0 olduni FROM `tmpuniids` GROUP BY `uni_id` HAVING `cnt` >= ' . $wordscount);
@@ -612,7 +648,7 @@ use lib\Objects\GeoCache\PrintList;
 //    add: SELECT g2.uni FROM `tmpuniids` JOIN gns_locations g1 ON tmpuniids.uni_id=g1.uni JOIN gns_locations g2 ON g1.ufi=g2.ufi WHERE g1.nt!='N' AND g2.nt='N'
 // remove: SELECT g1.uni FROM `tmpuniids` JOIN gns_locations g1 ON tmpuniids.uni_id=g1.uni JOIN gns_locations g2 ON g1.ufi=g2.ufi WHERE g1.nt!='N' AND g2.nt='N'
 
-                            // und jetzt noch alle englischen bezeichnungen durch deutsche ersetzen (wo mĂśglich) ...
+                            // and now replace all English names by German (where possible) ...
                             XDb::xSql('CREATE TEMPORARY TABLE `tmpuniidsAdd` (`uni` int(11) NOT NULL, `olduni` int(11) NOT NULL, PRIMARY KEY  (`uni`)) ENGINE=MEMORY SELECT g2.uni uni, g1.uni olduni FROM `tmpuniids` JOIN gns_locations g1 ON tmpuniids.uni_id=g1.uni JOIN gns_locations g2 ON g1.ufi=g2.ufi WHERE g1.nt!=\'N\' AND g2.nt=\'N\' GROUP BY uni');
                             XDb::xSql('CREATE TEMPORARY TABLE `tmpuniidsRemove` (`uni` int(11) NOT NULL, PRIMARY KEY  (`uni`)) ENGINE=MEMORY SELECT DISTINCT g1.uni uni FROM `tmpuniids` JOIN gns_locations g1 ON tmpuniids.uni_id=g1.uni JOIN gns_locations g2 ON g1.ufi=g2.ufi WHERE g1.nt!=\'N\' AND g2.nt=\'N\'');
                             XDb::xSql('DELETE FROM tmpuniids WHERE uni_id IN (SELECT uni FROM tmpuniidsRemove)');
@@ -655,14 +691,14 @@ use lib\Objects\GeoCache\PrintList;
                         }
 
 
-                        // ok, wir haben einen ort ... koordinaten ermitteln
+                        // ok, we have a location ... determin coordinates
                         $locid = $locid + 0;
                         $sqlstr="SELECT `lon`, `lat` FROM `gns_locations` WHERE `uni`= :1 LIMIT 1";
                         $s = $dbc->multiVariableQuery($sqlstr, $locid );
 
                         if ( $r =  $dbc->dbResultFetchOneRowOnly($s) ){
 
-                            // ok ... wir haben koordinaten ...
+                            // ok ... we have coordinates ...
 
                             $lat = $r['lat'] + 0;
                             $lon = $r['lon'] + 0;
@@ -676,7 +712,7 @@ use lib\Objects\GeoCache\PrintList;
                             $distance = $options['distance'];
                             $distance_unit = $options['unit'];
 
-                            // ab hier selber code wie bei bydistance ... TODO: in funktion auslagern
+                            // from here same code like bydistance ... TODO: move to function
 
                             //all target caches are between lat - max_lat_diff and lat + max_lat_diff
                             $max_lat_diff = $distance / (111.12 * $multiplier[$distance_unit]);
@@ -686,16 +722,17 @@ use lib\Objects\GeoCache\PrintList;
                             $max_lon_diff = $distance * 180 / (abs(sin((90 - $lat) * 3.14159 / 180 )) * 6378 * $multiplier[$distance_unit] * 3.14159);
 
                             $sqlstr = 'CREATE TEMPORARY TABLE result_caches ENGINE=MEMORY
-                                                    SELECT
-                                                        (' . getCalcDistanceSqlFormula($usr !== false,$lon, $lat, $distance, $multiplier[$distance_unit]) . ') `distance`,
-                                                        `caches`.`cache_id` `cache_id`
-                                                    FROM `caches` FORCE INDEX (`latitude`)
-                                                LEFT JOIN `cache_mod_cords` ON `caches`.`cache_id` = `cache_mod_cords`.`cache_id` AND `cache_mod_cords`.`user_id` = :1
-                                                    WHERE IFNULL(cache_mod_cords.longitude, `caches`.`longitude`) >  :2
-                                                        AND IFNULL(cache_mod_cords.longitude, `caches`.`longitude`)  < :3
-                                                        AND IFNULL(cache_mod_cords.latitude, `caches`.`latitude`)  >  :4
-                                                        AND IFNULL(cache_mod_cords.latitude, `caches`.`latitude`) < :5
-                                                    HAVING `distance` < :6';
+                                SELECT
+                                    (' . getCalcDistanceSqlFormula($usr !== false,$lon, $lat, $distance, $multiplier[$distance_unit]) . ') `distance`,
+                                    `caches`.`cache_id` `cache_id`
+                                FROM `caches` FORCE INDEX (`latitude`)
+                                LEFT JOIN `cache_mod_cords` ON `caches`.`cache_id` = `cache_mod_cords`.`cache_id`
+                                    AND `cache_mod_cords`.`user_id` = :1
+                                WHERE IFNULL(cache_mod_cords.longitude, `caches`.`longitude`) >  :2
+                                    AND IFNULL(cache_mod_cords.longitude, `caches`.`longitude`)  < :3
+                                    AND IFNULL(cache_mod_cords.latitude, `caches`.`latitude`)  >  :4
+                                    AND IFNULL(cache_mod_cords.latitude, `caches`.`latitude`) < :5
+                                HAVING `distance` < :6';
 
                             $dbcSearch->multiVariableQuery( $sqlstr, $usr['userid'], ($lon - $max_lon_diff), ($lon + $max_lon_diff), ($lat - $max_lat_diff), ($lat + $max_lat_diff), $distance );
 
@@ -797,11 +834,12 @@ use lib\Objects\GeoCache\PrintList;
                         (' . getCalcDistanceSqlFormula($usr !== false,$lon, $lat, $distance, $multiplier[$distance_unit]) . ') `distance`,
                         `caches`.`cache_id` `cache_id`
                     FROM `caches` FORCE INDEX (`latitude`)
-                        LEFT JOIN `cache_mod_cords` ON `caches`.`cache_id` = `cache_mod_cords`.`cache_id` AND `cache_mod_cords`.`user_id` = :1
-                            WHERE IFNULL(cache_mod_cords.longitude, `caches`.`longitude`) > :2
-                                AND IFNULL(cache_mod_cords.longitude, `caches`.`longitude`)  < :3
-                                AND IFNULL(cache_mod_cords.latitude, `caches`.`latitude`)  > :4
-                                AND IFNULL(cache_mod_cords.latitude, `caches`.`latitude`) < :5
+                        LEFT JOIN `cache_mod_cords` ON `caches`.`cache_id` = `cache_mod_cords`.`cache_id`
+                            AND `cache_mod_cords`.`user_id` = :1
+                    WHERE IFNULL(cache_mod_cords.longitude, `caches`.`longitude`) > :2
+                        AND IFNULL(cache_mod_cords.longitude, `caches`.`longitude`)  < :3
+                        AND IFNULL(cache_mod_cords.latitude, `caches`.`latitude`)  > :4
+                        AND IFNULL(cache_mod_cords.latitude, `caches`.`latitude`) < :5
                     HAVING `distance` < :6';
 
                     $dbcSearch->multiVariableQuery( $sqlstr, $usr['userid'], ($lon - $max_lon_diff), ($lon + $max_lon_diff), ($lat - $max_lat_diff), ($lat + $max_lat_diff), $distance );
@@ -1043,8 +1081,9 @@ use lib\Objects\GeoCache\PrintList;
                 if (isset($options['cachesize_5']) && ($options['cachesize_5'] == '1')) { $cachesize[] = '5'; }
                 if (isset($options['cachesize_6']) && ($options['cachesize_6'] == '1')) { $cachesize[] = '6'; }
                 if (isset($options['cachesize_7']) && ($options['cachesize_7'] == '1')) { $cachesize[] = '7'; }
+                if (isset($options['cachesize_8']) && ($options['cachesize_8'] == '1')) { $cachesize[] = '8'; }
 
-                if ((sizeof($cachesize) > 0) && (sizeof($cachesize) < 7)) {
+                if ((sizeof($cachesize) > 0) && (sizeof($cachesize) < 8)) {
                     $sql_where[] = '`caches`.`size` IN (' . implode(' , ', $cachesize) . ')';
                 }
 
@@ -1134,7 +1173,6 @@ use lib\Objects\GeoCache\PrintList;
                 exit;
             }
         }
-    }
 
     unset($dbc);
     unset($dbcSearch);
@@ -1149,7 +1187,7 @@ function outputSearchForm($options)
 {
     global $stylepath, $usr, $error_plz, $error_locidnocoords, $error_ort, $error_noort, $error_nofulltext;
     global $default_lang, $search_all_countries, $cache_attrib_jsarray_line, $cache_attrib_img_line;
-    global $lang, $language, $config;
+    global $lang, $config;
 
     //simple mode (only one easy filter)
     $filters = file_get_contents($stylepath . '/search.simple.tpl.php');
@@ -1246,67 +1284,10 @@ function outputSearchForm($options)
         tpl_set_var('cachetype', '');
     }
 
-    if (isset($options['cachesize_1']))
-    {
-        tpl_set_var('cachesize_1', htmlspecialchars($options['cachesize_1'], ENT_COMPAT, 'UTF-8'));
-    }
-    else
-    {
-        tpl_set_var('cachesize_1', '');
-    }
-
-    if (isset($options['cachesize_2']))
-    {
-        tpl_set_var('cachesize_2', htmlspecialchars($options['cachesize_2'], ENT_COMPAT, 'UTF-8'));
-    }
-    else
-    {
-        tpl_set_var('cachesize_2', '');
-    }
-
-    if (isset($options['cachesize_3']))
-    {
-        tpl_set_var('cachesize_3', htmlspecialchars($options['cachesize_3'], ENT_COMPAT, 'UTF-8'));
-    }
-    else
-    {
-        tpl_set_var('cachesize_3', '');
-    }
-
-    if (isset($options['cachesize_4']))
-    {
-        tpl_set_var('cachesize_4', htmlspecialchars($options['cachesize_4'], ENT_COMPAT, 'UTF-8'));
-    }
-    else
-    {
-        tpl_set_var('cachesize_4', '');
-    }
-
-    if (isset($options['cachesize_5']))
-    {
-        tpl_set_var('cachesize_5', htmlspecialchars($options['cachesize_5'], ENT_COMPAT, 'UTF-8'));
-    }
-    else
-    {
-        tpl_set_var('cachesize_5', '');
-    }
-
-    if (isset($options['cachesize_6']))
-    {
-        tpl_set_var('cachesize_6', htmlspecialchars($options['cachesize_6'], ENT_COMPAT, 'UTF-8'));
-    }
-    else
-    {
-        tpl_set_var('cachesize_6', '');
-    }
-
-    if (isset($options['cachesize_7']))
-    {
-        tpl_set_var('cachesize_7', htmlspecialchars($options['cachesize_7'], ENT_COMPAT, 'UTF-8'));
-    }
-    else
-    {
-        tpl_set_var('cachesize_7', '');
+    for ($size = 1; $size <= 8; ++$size) {
+        if (isset($options['cachesize_'.$size])) {
+            tpl_set_var('cachesize_'.$size, htmlspecialchars($options['cachesize_'.$size], ENT_COMPAT, 'UTF-8'));
+        }
     }
 
     if (isset($options['cachevote_1']) && isset($options['cachevote_2']))
@@ -1496,7 +1477,7 @@ function outputSearchForm($options)
 
     // Typ skrzynki
     $cachetype_options = '';
-                if(checkField('cache_type',$lang) )
+                if(Xdb::xContainsColumn('cache_type',$lang) )
                     $lang_db = XDb::xEscape($lang);
                 else
                     $lang_db = "en";
@@ -1555,17 +1536,17 @@ function outputSearchForm($options)
     //Rozmiar skrzynki
 
     $cachesize_options = '';
-                if(checkField('cache_size',$lang) )
-                    $lang_db = XDb::xEscape($lang);
-                else
-                    $lang_db = "en";
+    if (Xdb::xContainsColumn('cache_size',$lang))
+        $lang_db = XDb::xEscape($lang);
+    else
+        $lang_db = "en";
 
     $rs = XDb::xSql("SELECT `id`, `$lang_db` FROM `cache_size` ORDER BY `id`");
     for ($i = 0; $i < XDb::xNumRows($rs); $i++)
     {
         $record = XDb::xFetchArray($rs);
 
-        $cachesize_options .= '<input type="checkbox" name="cachesize_' . htmlspecialchars($record['id'], ENT_COMPAT, 'UTF-8') . '" value="1" id="l_cachesize_' . htmlspecialchars($record['id'], ENT_COMPAT, 'UTF-8') . '" class="checkbox" onclick="javascript:sync_options(this)" checked="checked" /><label for="l_cachesize_' . htmlspecialchars($record['id'], ENT_COMPAT, 'UTF-8') . '">' . htmlspecialchars($record[$lang_db], ENT_COMPAT, 'UTF-8') . '</label>';
+        $cachesize_options .= '<input type="checkbox" name="cachesize_' . htmlspecialchars($record['id'], ENT_COMPAT, 'UTF-8') . '" value="1" id="l_cachesize_' . htmlspecialchars($record['id'], ENT_COMPAT, 'UTF-8') . '" class="checkbox" onclick="javascript:sync_options(this)" '.($options['cachesize_'.$record['id']] == 1 ? 'checked="checked"' : '').'/><label for="l_cachesize_' . htmlspecialchars($record['id'], ENT_COMPAT, 'UTF-8') . '">' . htmlspecialchars($record[$lang_db], ENT_COMPAT, 'UTF-8') . '</label>';
 
         $cachesize_options .= "\n";
     }
@@ -1699,7 +1680,7 @@ function attr_image($tpl, $options, $id, $textlong, $iconlarge, $iconno, $iconun
             tpl_set_var('ft_pictures_checked', '');
     }
 
-    // errormeldungen
+    // error messages
     tpl_set_var('ortserror', '');
     if (isset($options['error_plz']))
         tpl_set_var('ortserror', $error_plz);
@@ -1732,7 +1713,7 @@ function outputUniidSelectionForm($uniSql, $urlparams)
 
     $tplname = 'selectlocid';
 
-    // urlparams zusammenbauen
+    // build urlparams
     $urlparamString = '';
     foreach ($urlparams AS $name => $param)
     {
@@ -1769,7 +1750,7 @@ function outputUniidSelectionForm($uniSql, $urlparams)
 
     tpl_set_var('resultscount', $rCount['count']);
 
-    // seitennummern erstellen
+    // create page numbers
     $maxsite = ceil($rCount['count'] / 20) - 1;
     $pages = '';
 
@@ -1822,7 +1803,7 @@ function outputUniidSelectionForm($uniSql, $urlparams)
     {
         $thislocation = $locline;
 
-        // locationsdings zusammenbauen
+        // build location thing
         $locString = '';
         if ($r['admtxt1'] != '')
         {
@@ -1847,13 +1828,13 @@ function outputUniidSelectionForm($uniSql, $urlparams)
 
         $thislocation = mb_ereg_replace('{parentlocations}', $locString, $thislocation);
 
-        // koordinaten ermitteln
+        // determine coordinates
         $coordString = help_latToDegreeStr($r['lat']) . ' ' . help_lonToDegreeStr($r['lon']);
         $thislocation = mb_ereg_replace('{coords}', htmlspecialchars($coordString, ENT_COMPAT, 'UTF-8'), $thislocation);
 
         if ($r['olduni'] != 0)
         {
-            // der alte name wurde durch den native-wert ersetzt
+            // the old name was replaced by the native value
             $thissecloc = $secondlocationname;
 
             $r['olduni'] = $r['olduni'] + 0;
@@ -1901,7 +1882,7 @@ function outputLocidSelectionForm($locSql, $urlparams)
 
     $tplname = 'selectlocid';
 
-    // urlparams zusammenbauen
+    // build urlparams
     $urlparamString = '';
     foreach ($urlparams AS $name => $param)
     {
@@ -1936,7 +1917,7 @@ function outputLocidSelectionForm($locSql, $urlparams)
     {
         $thislocation = $locline;
 
-        // locationsdings zusammenbauen
+        // build location thing
         $locString = '';
         $land = landFromLocid($r['loc_id']);
         if ($land != '') $locString .= htmlspecialchars($land, ENT_COMPAT, 'UTF-8');
@@ -1949,7 +1930,7 @@ function outputLocidSelectionForm($locSql, $urlparams)
 
         $thislocation = mb_ereg_replace('{parentlocations}', $locString, $thislocation);
 
-        // koordinaten ermitteln
+        // determine coordinates
         $r['loc_id'] = $r['loc_id'] + 0;
         $rsCoords = XDb::xSql('SELECT `lon`, `lat` FROM `geodb_coordinates` WHERE loc_id=' . $r['loc_id'] . ' LIMIT 1');
         if ($rCoords = XDb::xFetchArray($rsCoords))
@@ -1979,4 +1960,3 @@ function outputLocidSelectionForm($locSql, $urlparams)
     tpl_BuildTemplate();
     exit;
 }
-?>

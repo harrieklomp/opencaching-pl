@@ -1,8 +1,8 @@
 <?php
 
-
-
 use Utils\Database\OcDb;
+use lib\Controllers\MeritBadgeController;
+use okapi\Facade;
 
 require('./lib/cache.php');
 $cache = cache::instance();
@@ -10,6 +10,9 @@ $st = $cache->getCacheStatuses();
 
 require('./lib/common.inc.php');
 require($stylepath . '/mytop5.inc.php');
+
+global $config;
+
 
 if ($error == false) {
     //user logged in?
@@ -49,11 +52,15 @@ if ($error == false) {
                 $query = "DELETE FROM cache_rating WHERE cache_id = :cache_id AND user_id = :user_id";
                 $dbc->paramQuery($query, $params);
 
+                if ($config['meritBadges']){
+                    $ctrlMeritBadge = new MeritBadgeController;
+                    $ctrlMeritBadge->updateTriggerCacheAuthor($cache_id);
+                }
+
                 // Notify OKAPI's replicate module of the change.
                 // Details: https://github.com/opencaching/okapi/issues/265
-                require_once($rootpath . 'okapi/facade.php');
-                \okapi\Facade::schedule_user_entries_check($cache_id, $usr['userid']);
-                \okapi\Facade::disable_error_handling();
+                Facade::schedule_user_entries_check($cache_id, $usr['userid']);
+                Facade::disable_error_handling();
 
                 $query = "SELECT name FROM caches WHERE cache_id = :cache_id LIMIT 1";
                 $params = array(
@@ -109,14 +116,14 @@ if ($error == false) {
 
             $thisline = mb_ereg_replace('{cacheicon}', $cacheicon, $thisline);
             if ($r['status'] == 3) {
-                $thisline = mb_ereg_replace('{cachename}', $error_prefix . htmlspecialchars($r['cachename'], ENT_COMPAT, 'UTF-8') . $error_suffix, $thisline);
+                $thisline = mb_ereg_replace('{cachename}', '<span class="errormsg">' . htmlspecialchars($r['cachename'], ENT_COMPAT, 'UTF-8') . '</span>', $thisline);
             }else
                 $thisline = mb_ereg_replace('{cachename}', htmlspecialchars($r['cachename'], ENT_COMPAT, 'UTF-8'), $thisline);
-            
+
             $thisline = mb_ereg_replace('{cacheid}', htmlspecialchars($r['cache_id'], ENT_COMPAT, 'UTF-8'), $thisline);
             $thisline = mb_ereg_replace('{ownername}', htmlspecialchars($r['ownername'], ENT_COMPAT, 'UTF-8'), $thisline);
             $thisline = mb_ereg_replace('{owner_id}', htmlspecialchars($r['owner_id'], ENT_COMPAT, 'UTF-8'), $thisline);
-            
+
             if (($i % 2) == 1)
                 $thisline = mb_ereg_replace('{bgcolor}', $bgcolor2, $thisline);
             else

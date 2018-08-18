@@ -1,5 +1,7 @@
 <?php
 
+// Note: This file is also included in OKAPI code, to filter submitted log texts.
+
 $allowedtags = mb_split(',', 'a,b,i,p,q,s,u,br,dd,dl,dt,em,h1,h2,h3,h4,h5,h6,hr,li,td,th,tr,tt,ol,ul,big,bdo,col,dfn,del,dir,div,ins,img,kbd,map,pre,sub,sup,var,abbr,area,cite,code,font,menu,marquee,samp,span,small,thead,tfoot,tbody,table,strong,center,strike,acronym,address,caption,isindex,colgroup,fieldset,object,param,embed');
 $allowedattr = mb_split(',', 'marquee,id,src,alt,dir,rel,rev,abbr,axis,char,cite,face,href,lang,name,size,span,type,align,class,clear,color,frame,ismap,rules,scope,shape,start,style,title,value,width,border,coords,height,hspace,nowrap,nohref,target,usemap,vspace,valign,bgcolor,charoff,charset,colspan,compact,headers,noshade,rowspan,summary,longdesc,hreflang,datetime,tabindex,accesskey,background,cellspacing,cellpadding,allowscriptaccess,allowfullscreen,classid,codebase,standby,pluginspage,data');
 
@@ -385,7 +387,7 @@ class InputFilter
             $nextsPos = mb_strpos($tag, '\'', $pos);
 
             if (($nextdPos === false) && ($nextsPos === false)) {
-                // keine weiteren Tags ... bis zum ende filtern
+                // no more more tags ... filter until end of text
                 $filter_len = mb_strlen($tag) - $pos;
                 $no_filter_len = 0;
             } else {
@@ -404,7 +406,7 @@ class InputFilter
                 }
                 $filter_len = $nextPos - $pos + 1;
 
-                // ok, wir haben einen Anfang ... nach dem Ende suchen
+                // ok, we have a starting point ... search for the end
                 $endFilter = mb_strpos($tag, $termchar, $nextPos + 1);
 
                 if ($endFilter === false) {
@@ -426,7 +428,7 @@ class InputFilter
             $retval .= $termchar;
 
         if (mb_substr($retval, 0, 1) == '/') {
-            //alle Attribute entfernen
+            // remove all attriutes
             $spacePos = mb_strpos($retval, ' ');
 
             if ($spacePos !== false)

@@ -33,7 +33,7 @@ class ClassPathDictionary
     /**
 
      * While new class creating, try use namespace, leading to class php file. Thanks to that class
-     * can be loaded automaticly witch function getClassPath().
+     * can be loaded automatically with function getClassPath().
      *
      * use this method if using namespace is not possible any reason
      *
@@ -44,39 +44,52 @@ class ClassPathDictionary
      */
     private static $classDictionary = array(
         'cache' => 'lib/cache.php',
-        'PasswordManager' => 'lib/passwordManager.php',
-        'GeoKretyApi' => 'GeoKretyAPI.php',
-        'GetRegions' => 'GetRegions.php',
         'myninc' => 'lib/myn.inc.php',
-        'localCachesInc' => 'lib/local_caches.inc.php',
         'powerTrailBase' => 'powerTrail/powerTrailBase.php',
         'powerTrailController' => 'powerTrail/powerTrailController.php',
         'sendEmail' => 'powerTrail/sendEmail.php',
-        'Kint' => 'lib/kint/Kint.class.php',
-        'userInputFilter' => 'lib/userInputFilters/userInputFilter.php',
-        'PlotLine' => 'lib/jpgraph/src/jpgraph_plotline.php'
     );
 
     public static function getClassPath($className)
     {
         $classPathArr = explode('\\', $className);
-        if (isset($classPathArr[1])) { /* namespace solution */
-            $classPath = __DIR__ . '/../';
-            foreach ($classPathArr as $pathPiece) {
-                $classPath .= $pathPiece . '/';
-            }
-            $classPath = substr($classPath, 0, -1) . '.php';
-            return $classPath;
-        }
 
-        if( isset(self::$classDictionary[$className]) ){
-            return __DIR__ . '/../' . self::$classDictionary[$className];
-        }else{
-            trigger_error("Classpath can't find: $className", E_USER_WARNING);
+        if ( count($classPathArr) > 1) { /* namespace solution */
+
+            $fileName = array_pop($classPathArr) . '.php';
+            $classPath = __DIR__ . '/../' . implode('/', $classPathArr);
+
+            $fileToInclude = $classPath . '/' . $fileName;
+            if( file_exists($fileToInclude) ){
+                return $fileToInclude;
+            }
+
+            // there is no such file - okapi has lowercase filenames convension
+            // try to find file with lowercase filename
+            $fileToInclude = $classPath . '/' . lcfirst($fileName);
+
+            if( file_exists($fileToInclude) ){
+                // check if classname exists
+                return $fileToInclude;
+            }
+
+            trigger_error(__METHOD__.": ERROR: Trying to load unknown class: $className");
             return null;
         }
-    }
 
+        // try to look for this class in local dictionary
+        if( isset(self::$classDictionary[$className] ) ){
+            $fileToInclude = __DIR__ . '/../' . self::$classDictionary[$className];
+            if( file_exists($fileToInclude) ){
+                return $fileToInclude;
+            }else{
+                trigger_error(__METHOD__.": ERROR: Class $className found in dictionary, but file is missing!");
+            }
+        }
+
+        trigger_error(__METHOD__.": ERROR: Trying to load unknown class: $className");
+        return null;
+    }
 }
 
 spl_autoload_register(function ($className) {

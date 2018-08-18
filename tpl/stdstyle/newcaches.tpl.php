@@ -1,36 +1,42 @@
-<?php
+<script src="lib/js/wz_tooltip.js"></script>
 
-?>
-<script type='text/javascript' src="lib/js/wz_tooltip.js"></script>
-<div class="content2-pagetitle"><img src="tpl/stdstyle/images/blue/cache.png" class="icon32" alt="Cache" title="Cache">&nbsp;{{newcaches_label}}</div>
-<!-- Text container -->
-<p>
+<div class="content2-container">
+
+  <div class="content2-pagetitle">
+    <img src="tpl/stdstyle/images/blue/cache.png" class="icon22" alt="Cache">
+    {{newcaches_label}}
+    <a href="/rss/newcaches.xml">
+      <img src="/tpl/stdstyle/images/misc/rss.svg" class="icon16" alt="RSS icon">
+    </a>
+  </div>
+
+  <div class="align-right">
+    <a class="btn btn-default btn-sm" href="/newcachesrest.php">
+      <?=$view->cachesOutsideOfCountry?>
+    </a>
+  </div>
+
+  <p>
     {pages}
-</p>
-<div class="searchdiv">
-    <table style="border-collapse: separate; border-spacing: 2px; margin-left: 10px; line-height: 1.4em; font-size: 13px; width: 97%;">
-        <tr>
-            <td><strong>{{date}}</strong></td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td><strong>{{geocache}}</strong></td>
-            <td><strong>{{region}}</strong></td>
-            <td><strong>{{owner}}</strong></td>
-        </tr>
-        <tr>
-            <td colspan="9"><hr></td>
-        </tr>
-        {newcaches}
-        <tr>
-            <td colspan="9"><hr></td>
-        </tr>
-    </table>
+  </p>
+
+  <table style="border-collapse: separate; border-spacing: 2px; line-height: 1.4em; font-size: 13px;">
+    <tr>
+      <td><strong>{{date}}</strong></td>
+      <td colspan="5">&nbsp;</td>
+      <td><strong>{{geocache}}</strong></td>
+      <td><strong>{{region}}</strong></td>
+      <td><strong>{{owner}}</strong></td>
+    </tr>
+    <tr>
+      <td colspan="9"><hr></td>
+    </tr>
+    {newcaches}
+  </table>
+
+  <div class="buffer"></div>
+  <p>
+    {pages}
+  </p>
+
 </div>
-<p>
-    {pages}
-</p>
-<!-- End Text Container -->
-

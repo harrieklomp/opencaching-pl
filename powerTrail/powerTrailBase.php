@@ -1,5 +1,7 @@
 <?php
 use Utils\Database\OcDb;
+use lib\Objects\Coordinates\Altitude;
+use lib\Objects\Coordinates\Coordinates;
 /**
  *
  */
@@ -19,12 +21,12 @@ class powerTrailBase{
     const iconPath = 'tpl/stdstyle/images/blue/';
 
     public static function minimumCacheCount(){
-        include __DIR__.'/../lib/settings.inc.php';
+        include __DIR__.'/../lib/settingsGlue.inc.php';
         return $powerTrailMinimumCacheCount['current'];
     }
 
     public static function historicMinimumCacheCount(){
-        include __DIR__.'/../lib/settings.inc.php';
+        include __DIR__.'/../lib/settingsGlue.inc.php';
         $min = $powerTrailMinimumCacheCount['current'];
         foreach ($powerTrailMinimumCacheCount['old'] as $date) {
             //var_dump($date['dateFrom'], $ptPublished, $date['dateTo']);
@@ -36,7 +38,7 @@ class powerTrailBase{
     }
 
     public static function userMinimumCacheFoundToSetNewPowerTrail(){
-        include __DIR__.'/../lib/settings.inc.php';
+        include __DIR__.'/../lib/settingsGlue.inc.php';
         return $powerTrailUserMinimumCacheFoundToSetNewPowerTrail;
     }
 
@@ -85,22 +87,22 @@ class powerTrailBase{
         return array (
             self::GEODRAW => array (
                 'geopathTypeName' => self::getConstName(self::GEODRAW),
-                'translate' => 'pt004',
+                'translate' => 'cs_typeGeoDraw',
                 'icon' => self::iconPath.'footprintRed.png',
             ),
             self::TOURING => array (
                 'geopathTypeName' => self::getConstName(self::TOURING),
-                'translate' => 'pt005',
+                'translate' => 'cs_typeTouring',
                 'icon' => self::iconPath.'footprintBlue.png',
             ),
             self::NATURE => array (
                 'geopathTypeName' => self::getConstName(self::NATURE),
-                'translate' => 'pt067',
+                'translate' => 'cs_typeNature',
                 'icon' => self::iconPath.'footprintGreen.png',
             ),
             self::TEMATIC => array (
                 'geopathTypeName' => self::getConstName(self::TEMATIC),
-                'translate' => 'pt079',
+                'translate' => 'cs_typeThematic',
                 'icon' => self::iconPath.'footprintYellow.png',
             ),
         );
@@ -294,11 +296,16 @@ class powerTrailBase{
         $sizePoints = self::cacheSizePoints();
         $typePoints = $typePoints[$cacheData['type']];
         $sizePoints = $sizePoints[$cacheData['size']];
-        $url = 'http://maps.googleapis.com/maps/api/elevation/xml?locations='.$cacheData['latitude'].','.$cacheData['longitude'].'&sensor=false';
-        $altitude = simplexml_load_file($url);
-        $altitude = round($altitude->result->elevation);
-        if ($altitude <= 400) $altPoints = 1;
-        else $altPoints = 1+($altitude-400)/200 ;
+
+        $altitude = Altitude::getAltitude(
+            Coordinates::FromCoordsFactory($cacheData['latitude'], $cacheData['longitude']));
+
+        $altitude = round($altitude);
+        if ($altitude <= 400){
+            $altPoints = 1;
+        } else {
+            $altPoints = 1+($altitude-400)/200 ;
+        }
         $difficPoint = round($cacheData['difficulty']/3,2);
         $terrainPoints = round($cacheData['terrain']/3,2);
         return ($altPoints + $typePoints + $sizePoints + $difficPoint + $terrainPoints);
@@ -329,23 +336,12 @@ class powerTrailBase{
         return $result;
     }
 
-    public static function writePromoPt4mainPage($oldPtId){
-        $q = 'SELECT * FROM `PowerTrail` WHERE `id` != :1 AND `status` = 1 AND `cacheCount` >= '.self::historicMinimumCacheCount().' ORDER BY `id` ASC';
-
-        $db = OcDb::instance();
-        $s = $db->multiVariableQuery($q, $oldPtId);
-        $r = $db->dbResultFetchAll($s);
-        foreach ($r as $pt) {
-            if ($pt['id'] > $oldPtId){
-                return $pt;
-            }
-        }
-        return $r[0];
-    }
 
     public static function getPtCaches($PtId){
         $db = OcDb::instance();
-        $q = 'SELECT powerTrail_caches.isFinal, caches . * , user.username FROM  `caches` , user, powerTrail_caches WHERE cache_id IN ( SELECT  `cacheId` FROM  `powerTrail_caches` WHERE  `PowerTrailId` =:1) AND user.user_id = caches.user_id AND powerTrail_caches.cacheId = caches.cache_id ORDER BY caches.name';
+        $q = 'SELECT powerTrail_caches.isFinal, caches . * , user.username FROM  `caches` , user, powerTrail_caches WHERE cache_id IN ( SELECT  `cacheId` FROM  `powerTrail_caches`
+                WHERE  `PowerTrailId` =:1) AND user.user_id = caches.user_id AND powerTrail_caches.cacheId = caches.cache_id
+                ORDER BY caches.name';
         $s = $db->multiVariableQuery($q, $PtId);
         return $db->dbResultFetchAll($s);
     }
@@ -389,7 +385,8 @@ class powerTrailBase{
         $sortOder = 'ASC';
         $sortBy = 'name';
 
-        $q = 'SELECT * FROM `PowerTrail` WHERE cacheCount >= '.self::historicMinimumCacheCount() .' '.$filter.' ORDER BY '.$sortBy.' '.$sortOder.' ';
+        $q = 'SELECT * FROM `PowerTrail` WHERE cacheCount >= '.self::historicMinimumCacheCount() .' '.$filter.'
+                ORDER BY '.$sortBy.' '.$sortOder.' ';
         $db = OcDb::instance();
         $s = $db->multiVariableQuery($q);
         return $db->dbResultFetchAll($s);

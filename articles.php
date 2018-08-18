@@ -29,8 +29,10 @@ if ($error == false) {
         //set article inside the articles-directory
         switch ($_REQUEST['page']) {
             case 'stat':
-                require_once('./graphs/cachetypes-oc.php');
-                tpl_set_var('oc_statistics_link', genStatPieUrl());
+                require_once($dynstylepath . 'charts_data.inc.php');
+                break;
+            case 's102':
+                $view->loadJQueryUI();
                 break;
             default:
                 break;
@@ -41,14 +43,8 @@ if ($error == false) {
         $tplname = 'articles/' . $article;
     }
 }
-if ((date('m') == 4) and ( date('d') == 1)) {
-    tpl_set_var('list_of_news', tr('PrimaAprilis'));
-    tpl_set_var('news', tr('PMOnly'));
-    $tplname = 'news';
-}
 
 tpl_set_var('language4js', $lang);
 
 //make the template and send it out
 tpl_BuildTemplate();
-?>

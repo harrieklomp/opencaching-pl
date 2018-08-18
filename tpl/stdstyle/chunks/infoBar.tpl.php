@@ -12,8 +12,9 @@ return function ($reloadUrl=null, $infoMsg=null, $errorMsg=null) {
 
 // begining of chunk
 ?>
-    <script type='text/javascript'>
-        // load chunk css
+
+    <script>
+        // load infoBar chunk css
         var linkElement = document.createElement("link");
         linkElement.rel = "stylesheet";
         linkElement.href = "<?=$chunkCSS?>";
@@ -21,7 +22,7 @@ return function ($reloadUrl=null, $infoMsg=null, $errorMsg=null) {
         document.head.appendChild(linkElement);
     </script>
 
-    <script type='text/javascript'>
+    <script>
         function infoBarReload(){
           window.location = "<?=$reloadUrl?>";
         }
@@ -32,33 +33,36 @@ return function ($reloadUrl=null, $infoMsg=null, $errorMsg=null) {
     </script>
 
     <?php if(!empty($infoMsg)) { ?>
-        <div class="infoBar-message infoBar-message-err">
-          <h5>
-            <?=$infoMsg?>
-
+        <div class="infoBar-message infoBar-messageInfo">
+          <div class="infoBar-messageText">
+              <?=$infoMsg?>
+          </div>
+          <div class="infoBar-closeBtnContainer">
             <?php if($reloadUrl) { ?>
-                <span class="infoBar-close-but" onclick="infoBarReload()">[X]</span>
+                <span class="infoBar-closeBtn" onclick="infoBarReload()"></span>
             <?php }else{ //if-reloadUrl ?>
-                <span class="infoBar-close-but" onclick="infoBarHide()">[X]</span>
+                <span class="infoBar-closeBtn" onclick="infoBarHide()"></span>
             <?php } //if-reloadUrl ?>
-          </h5>
+          </div>
         </div>
     <?php } ?>
 
     <?php if(!empty($errorMsg)) { ?>
-        <div class="infoBar-message">
-          <h5>
+        <div class="infoBar-message infoBar-messageErr">
+          <div class="infoBar-messageText">
             <?=$errorMsg?>
-
+          </div>
+          <div class="infoBar-closeBtnContainer">
             <?php if($reloadUrl) { ?>
-                <span class="infoBar-close-but" onclick="infoBarReload()">[X]</span>
+                <span class="infoBar-closeBtn" onclick="infoBarReload()"></span>
             <?php }else{ //if-reloadUrl ?>
-                <span class="infoBar-close-but" onclick="infoBarHide()">[X]</span>
+                <span class="infoBar-closeBtn" onclick="infoBarHide()"></span>
             <?php } //if-reloadUrl ?>
-
-          </h5>
+          </div>
         </div>
     <?php } ?>
+
+<link rel="prefetch" href="/tpl/stdstyle/images/misc/btn_close_hover.svg">
 
 <?php
 };

@@ -7,35 +7,44 @@
 
 require_once __dir__ . '/cache.php';
 
+// default site name
+$site_name = 'OpenCaching.???';
+
+
 // OC specific email addresses for international use
 // override in settings.inc.php to values you want to locally use
 
 $mail_cog = 'cog@localhost';    // OCPL COG = reviewers and regional service for cachers
 $mail_rt = 'root@localhost';    // OCPL technical contact
-$mail_rr = 'rr@localhost';      // unused; former OCPL RR - to remove
 $mail_oc = 'ocpl@localhost';    // OCPL general contact
 
-// news settings
-$use_news_approving = false;
+// enable detailed cache access logging
+$enable_cache_access_logs = false;
 
 $config = array(
+    /**
+     * country-id of the running node: pl|ro|nl...
+     */
+    'ocNode' => 'pl', // pl is a default
+
+
     /**
      *Add button to a shop. Set true otherwise false
      *Add link to the shop of choise.
      */
-    'showShopButton' => false,
-    'showShopButtonUrl' => 'http://www.shop of choise',
-    /** url where xml witch most recent blog enterie are placed */
-    'blogMostRecentRecordsUrl' => 'http://blog.opencaching.pl/feed/',
-    /* link to geokrety site
-     * to disable geokrety in main menu set:
-     * $config['geokrety_url'] = NULL;
-     * */
-    'geokrety_url' => 'https://geokrety.org',
+    //NOT USED: 'showShopButton' => false, - to display/hide mapv2 change menu conf.
+    //NOT USED: 'showShopButtonUrl' => 'http://www.shop of choise', - to display/hide mapv2 change menu conf.
+
+
     /** to switch cache map v2 on set true otherwise false */
-    'map2SwithedOn' => true,
+    //NOT USED: 'map2SwithedOn' => true, - to display/hide mapv2 change menu conf.
+
+
     /** to switch flopp's map on set true otherwise false */
-    'FloppSwithedOn' => false,
+    //NOT USED: 'FloppSwithedOn' => false, - to display/hide Flopp's map change menu conf.
+
+
+
     /* === Node personalizations === */
 
     /** main logo picture (to be placed in /images/) */
@@ -58,8 +67,15 @@ $config = array(
     'defaultLanguageList' => array(
         'PL', 'EN', 'FR', 'DE', 'NL', 'RO'
     ),
+    /** Languages supported by OC node -
+     * for those languages translations are supported both in file and db-tables
+     * IMPORTANT: use lower letters only! */
+    'supportedLanguages' => array (
+        'pl', 'en', 'nl', 'ro'
+    ),
     /** default country in user registration form */
     'defaultCountry' => 'PL',
+
     /* Enable referencing waypoints from other sites */
     'otherSites_geocaching_com' => 1,
     'otherSites_terracaching_com' => 1,
@@ -99,12 +115,6 @@ $config = array(
     'forbiddenCacheSizes' => array(
         //cache::SIZE_MICRO
     ),
-    /**
-     * If set to true, all database queries will be reported in the page
-     * output. (Note, that this will cause most of the AJAX actions to stop
-     * functioning properly.)
-     */
-    'debugDB' => true,
     /** The filter fragment selecting provinces from nuts_codes table. */
     'provinceNutsCondition' => '`code` like \'PL__\'',
     /** Nature2000 link - used in viewcache.php */
@@ -119,9 +129,7 @@ $config = array(
             'tileSize' => '256x256'
         ),
     ),
-    /**
-        *customization of cache-attribute icons
-    */
+    /** customization of cache-attribute icons */
     'search-attr-icons' => array(
         'password' => array (
             // has attribute
@@ -134,8 +142,20 @@ $config = array(
     ),
     'numberFormatDecPoint' => '.',
     'numberFormatThousandsSep' => ',',
-    'meritBadges' => false
+    'meritBadges' => false,
+
+    /** default style - in fact we don't heve any other style... */
+    'style' => 'stdstyle',
+
+    /**
+     * Common datetime and date format
+     */
+    'datetimeformat' => '%Y-%m-%d %H:%M:%S',
+    'dateformat' => '%Y-%m-%d'
 );
+
+// *** Repository automatic updates script location
+$config['server']['update']['script'] = '/var/www/ocpl-update.sh';
 
 /* ************************************************************************
  * Modules
@@ -193,7 +213,7 @@ $config['maps']['cache_mini_map']['zoom'] = 14;
  * $config['maps']['external']['MyMap_URL'] = '<a href="http://site/file?lat=%1$f&lon=%2$f&id=%3$s&name=%5$s">%6$s</a>';
  */
 $config['maps']['external']['Opencaching'] = 1;
-$config['maps']['external']['Opencaching_URL'] = 'cachemap3.php?lat=%1$f&lon=%2$f&cacheid=%3$s&inputZoom=14';
+$config['maps']['external']['Opencaching_URL'] = '/CacheMap/embeded?lat=%1$f&lon=%2$f&cacheid=%3$s&inputZoom=14';
 $config['maps']['external']['OSM'] = 1;
 $config['maps']['external']['OSM_URL'] = 'https://www.openstreetmap.org/index.html?mlat=%1$f&mlon=%2$f&zoom=16&layers=M';
 $config['maps']['external']['OSMapa'] = 0;
@@ -214,6 +234,9 @@ $config['maps']['external']['Flopp\'s Map_URL'] = 'http://flopp.net/?c=%1$f:%2$f
 $config['quick_search']['byowner'] = false;
 $config['quick_search']['byfinder'] = false;
 $config['quick_search']['byuser'] = true;
+
+// Minimum age to register (see GDPR policy)
+$config['limits']['minimum_age'] = 16;
 
   /** Limit for uplading pictures per node. */
 
@@ -253,18 +276,46 @@ $config['okapi']['admin_emails'] = false;
 // https://github.com/opencaching/opencaching-pl/issues/696
 $config['cache_log']['edit_time'] = 5;
 
-// Configuration of the bottom menu
-$config['bottom_menu']['impressum']['link'] = '';
-$config['bottom_menu']['impressum']['visible'] = false;
-$config['bottom_menu']['history']['link'] = '';
-$config['bottom_menu']['history']['visible'] = false;
-$config['bottom_menu']['contact']['link'] = 'articles.php?page=contact';
-$config['bottom_menu']['contact']['visible'] = true;
-$config['bottom_menu']['main_page']['link'] = '/index.php?page=sitemap';
-$config['bottom_menu']['main_page']['visible'] = true;
-
 // Configuration of license link at footer
 $config['license_html'] = '';
 
+// Configuration of feeds on the main page (for instruction - see setting-example.inc.php)
+$config['feed']['enabled'] = array();
+$config['feed']['forum']['url'] = '';
+$config['feed']['forum']['posts'] = 5;
+$config['feed']['forum']['showAuthor'] = true;
+$config['feed']['blog']['url'] = '';
+$config['feed']['blog']['posts'] = 5;
+$config['feed']['blog']['showAuthor'] = true;
+
 $subject_prefix_for_site_mails = "OCXX";
 $subject_prefix_for_reviewers_mails = "";
+
+
+// customization of the start page
+$config['startPage']['latestCacheSetsCount'] = 3;
+
+// logo displayed as apple-touch-icon-precomposed
+$config['header']['appleLogo'] = '/images/oc_logo_144.png';
+
+// FB login conf
+$config['oAuth']['facebook']['prodEnabled'] = false;
+$config['oAuth']['facebook']['testEnabled'] = false;
+$config['oAuth']['facebook']['appId'] = null;
+$config['oAuth']['facebook']['appSecret'] = null;
+
+// Google login conf
+$config['oAuth']['google']['prodEnabled'] = false;
+$config['oAuth']['google']['testEnabled'] = false;
+$config['oAuth']['google']['clientId'] = null;
+$config['oAuth']['google']['clientSecret'] = null;
+
+// MapQuest Key - used to access MapQuest API - to obtain key see: https://developer.mapquest.com/
+$config['maps']['mapQuestKey'] = null;
+
+
+// APC local monior config - see /lib/apc for details
+$config['apc']['username'] = 'admin';
+
+// the word 'password' as password is prohibited and will allow to login - override in settings.inc.php
+$config['apc']['password'] = 'password';

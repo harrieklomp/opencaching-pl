@@ -1,22 +1,18 @@
 <?php
 namespace lib\Objects\User;
 
-use Utils\Database\OcDb;
-use lib\Objects\GeoCache\GeoCache;
+use Utils\Generators\TextGen;
+use Utils\Generators\Uuid;
 use lib\Controllers\Php7Handler;
-use Utils\Database\XDb;
-use lib\Objects\OcConfig\OcConfig;
-use lib\Objects\BaseObject;
 use lib\Objects\Coordinates\Coordinates;
+use lib\Objects\GeoCache\GeoCache;
+use lib\Objects\OcConfig\OcConfig;
 use lib\Objects\PowerTrail\PowerTrail;
-
 
 /**
  * Description of user
- *
- * @author Łza
  */
-class User extends BaseObject
+class User extends UserCommons
 {
 
     private $userId;
@@ -25,65 +21,92 @@ class User extends BaseObject
     private $userName;
 
     private $foundGeocachesCount;
+    /** @var int */
+    private $foundPhysicalGeocachesCount = null;
     private $notFoundGeocachesCount;
     private $hiddenGeocachesCount;
     private $logNotesCount;
     private $email;
 
-    /* @var $homeCoordinates Coordinates */
+    /** @var $homeCoordinates Coordinates */
     private $homeCoordinates;
-
-    private $country;
+    private $notifyRadius;
 
     private $profileUrl = null;
 
-    private $ingnoreGeocacheLimitWhileCreatingNewGeocache = null;
+    /** @var boolean */
+    private $newCachesNoLimit = null;
 
-    /* @var $powerTrailCompleted \ArrayObject() */
+    /** @var $powerTrailCompleted \ArrayObject() */
     private $powerTrailCompleted = null;
 
-    /* @var $powerTrailOwed \ArrayObject() */
+    /** @var $powerTrailOwed \ArrayObject() */
     private $powerTrailOwed = null;
 
-    /* @var $geocaches \ArrayObject() */
+    /** @var $geocaches \ArrayObject() */
     private $geocaches = null;
 
-    /* @var $geocachesNotPublished \ArrayObject() */
+    /** @var $geocachesNotPublished \ArrayObject() */
     private $geocachesNotPublished = null;
 
-    /* @var $geocachesWaitAproove \ArrayObject() */
+    /** @var $geocachesWaitAproove \ArrayObject() */
     private $geocachesWaitAproove = null;
 
-    /* @var $geocachesBlocked \ArrayObject() */
+    /** @var $geocachesBlocked \ArrayObject() */
     private $geocachesBlocked = null;
 
     private $eventsAttendsCount = null;
 
+    private $dateCreated;
+    private $description;
+
+    /** @var \DateTime */
+    private $lastLogin = null;
+    private $isActive = null;
+
     private $verifyAll = null;
+
+    /** @var boolean */
+    private $statBan;
+
+    private $permanentLogin = false;
+
 
     /* user identifier used to communication with geoKrety Api*/
     private $geokretyApiSecid;
 
-    const REGEX_USERNAME = '^[a-zA-Z0-9ęóąśłżźćńĘÓĄŚŁŻŹĆŃăîşţâĂÎŞŢÂșțȘȚéáöőüűóúÉÁÖŐÜŰÓÚ@-][a-zA-ZęóąśłżźćńĘÓĄŚŁŻŹĆŃăîşţâĂÎŞŢÂșțȘȚéáöőüűóúÉÁÖŐÜŰÓÚ0-9\.\-=_ @ęóąśłżźćńĘÓĄŚŁŻŹĆŃăîşţâĂÎŞŢÂșțȘȚéáöőüűóúÉÁÖŐÜŰÓÚäüöÄÜÖ=)(\/\\\ -=&*+~#]{2,59}$';
-    const REGEX_PASSWORD = '^[a-zA-Z0-9\.\-_ @ęóąśłżźćńĘÓĄŚŁŻŹĆŃăîşţâĂÎŞŢÂșțȘȚéáöőüűóúÉÁÖŐÜŰÓÚäüöÄÜÖ=)(\/\\\$&*+~#]{3,60}$';
-
+    private $rulesConfirmed = false;
+    private $watchmailMode;
+    private $watchmailDay;
+    private $watchmailHour;
+    /** @var bool */
+    private $notifyCaches;
+    /** @var bool */
+    private $notifyLogs;
+    private $activationCode;
 
     const COMMON_COLLUMNS = "user_id, username, founds_count, notfounds_count,
-                       hidden_count, latitude, longitude, country,
-                       email, admin, guru, verify_all";
+                       hidden_count, latitude, longitude,
+                       email, admin, guru, verify_all, rules_confirmed,
+                       notify_radius, watchmail_mode, watchmail_day,
+                       watchmail_hour, notify_caches, notify_logs,
+                       is_active_flag, stat_ban, description, activation_code,
+                       date_created, last_login";
+
+    const AUTH_COLLUMS = self::COMMON_COLLUMNS . ', permanent_login_flag';
 
     /**
      * construct class using $userId (fields will be loaded from db)
      * OR, if you have already user data row fetched from db row ($userDbRow), object is created using this data
      *
-     * @param type $userId - user identifier in db
-     * @param type $userDbRow - array - user data taken from db, from table user.
+     * @param int $userId - user identifier in db
+     * @param array $userDbRow - array - user data taken from db, from table user.
      */
     public function __construct(array $params=null)
     {
         parent::__construct();
 
-        if(is_null($params)){
+        if (is_null($params)) {
             $params = array();
         }
 
@@ -113,13 +136,18 @@ class User extends BaseObject
 
     /**
      * Factory
-     * @param unknown $username
+     * @param string $username
      * @return User object or null on error
      */
-    public static function fromUsernameFactory($username){
+    public static function fromUsernameFactory($username, $fields = null)
+    {
+
+        if (!$fields) {
+            $fields = self::COMMON_COLLUMNS;
+        }
 
         $u = new self();
-        if($u->loadDataFromDbByUsername($username, self::COMMON_COLLUMNS)){
+        if ($u->loadDataFromDbByUsername($username, $fields)) {
             return $u;
         }
         return null;
@@ -127,32 +155,57 @@ class User extends BaseObject
 
     /**
      * Factory
-     * @param unknown $username
+     * @param string $email
      * @return User object or null on error
      */
-    public static function fromUserIdFactory($userId){
-        $u = new self();
-        $u->userId = $userId;
+    public static function fromEmailFactory($email, $fields = null)
+    {
 
-        if($u->loadDataFromDb(self::COMMON_COLLUMNS)){
+        if (!$fields) {
+            $fields = self::COMMON_COLLUMNS;
+        }
+
+        $u = new self();
+        if ($u->loadDataFromDbByEmail($email, $fields)) {
             return $u;
         }
         return null;
     }
 
-    public function loadExtendedSettings()
-    {
-        $db = OcDb::instance();
-        $queryById = "SELECT `newcaches_no_limit` AS ingnoreGeocacheLimitWhileCreatingNewGeocache "
-                   . "FROM `user_settings` WHERE `user_id` = :1 LIMIT 1";
-        $stmt = $db->multiVariableQuery($queryById, $this->userId);
-        $dbRow = $db->dbResultFetchOneRowOnly($stmt);
 
-        if ($dbRow && $dbRow['ingnoreGeocacheLimitWhileCreatingNewGeocache'] == 1) {
-            $this->ingnoreGeocacheLimitWhileCreatingNewGeocache = true;
-        }else{
-            $this->ingnoreGeocacheLimitWhileCreatingNewGeocache = false;
+    /**
+     * Factory
+     * @param $username
+     * @param $fields - comma separatd list of columns to get from DB
+     * @return User object or null on error
+     */
+    public static function fromUserIdFactory($userId, $fields = null)
+    {
+        $u = new self();
+        $u->userId = $userId;
+
+        if (is_null($fields)) {
+            $fields = self::COMMON_COLLUMNS;
         }
+
+        if ($u->loadDataFromDb($fields)) {
+            return $u;
+        }
+        return null;
+    }
+
+    /**
+     * Load extended settings from user_settings table
+     */
+    private function loadExtendedSettings()
+    {
+        $value = $this->db->multiVariableQueryValue("
+            SELECT `newcaches_no_limit`
+            FROM `user_settings`
+            WHERE `user_id` = :1
+            LIMIT 1
+            ", 0, $this->userId);
+        $this->newCachesNoLimit = Php7Handler::Boolval($value);
     }
 
     public function loadFromOKAPIRsp($okapiRow)
@@ -178,29 +231,45 @@ class User extends BaseObject
 
     }
 
-    private function loadDataFromDb($fields){
+    private function loadDataFromDb($fields)
+    {
 
         $stmt = $this->db->multiVariableQuery(
             "SELECT $fields FROM `user` WHERE `user_id`=:1 LIMIT 1", $this->userId);
 
-        if($row = $this->db->dbResultFetchOneRowOnly($stmt)){
+        if ($row = $this->db->dbResultFetchOneRowOnly($stmt)) {
             $this->setUserFieldsByUsedDbRow($row);
             return true;
         }
         return false;
     }
 
-    private function loadDataFromDbByUsername($username, $fields){
+    private function loadDataFromDbByUsername($username, $fields)
+    {
 
         $stmt = $this->db->multiVariableQuery(
             "SELECT $fields FROM `user` WHERE `username`=:1 LIMIT 1", $username);
 
-        if($row = $this->db->dbResultFetchOneRowOnly($stmt)){
+        if ($row = $this->db->dbResultFetchOneRowOnly($stmt)) {
             $this->setUserFieldsByUsedDbRow($row);
             return true;
         }
         return false;
     }
+
+    private function loadDataFromDbByEmail($email, $fields)
+    {
+
+        $stmt = $this->db->multiVariableQuery(
+            "SELECT $fields FROM `user` WHERE `email`=:1 LIMIT 1", $email);
+
+        if ($row = $this->db->dbResultFetchOneRowOnly($stmt)) {
+            $this->setUserFieldsByUsedDbRow($row);
+            return true;
+        }
+        return false;
+    }
+
 
     private function setUserFieldsByUsedDbRow(array $dbRow)
     {
@@ -226,13 +295,13 @@ class User extends BaseObject
                 case 'email':
                     $this->email = $value;
                     break;
-                case 'country':
-                    $this->country = $value;
-                    break;
                 case 'latitude':
                 case 'longitude':
                     // lat|lon are handling below
                     $cordsPresent = true;
+                    break;
+                case 'notify_radius':
+                    $this->notifyRadius = $value;
                     break;
                 case 'admin':
                     $this->isAdmin = Php7Handler::Boolval($value);
@@ -244,16 +313,54 @@ class User extends BaseObject
                     $this->logNotesCount = $value;
                     break;
                 case 'verify_all':
-                    $this->verifyAll = $value;
+                    $this->verifyAll = Php7Handler::Boolval($value);
+                    break;
+                case 'stat_ban':
+                    $this->statBan = Php7Handler::Boolval($value);
+                    break;
+                case 'rules_confirmed':
+                    $this->rulesConfirmed = Php7Handler::Boolval($value);
+                    break;
+                case 'date_created':
+                    $this->dateCreated = $value;
+                    break;
+                case 'description':
+                    $this->description = $value;
+                    break;
+                case 'last_login':
+                    if (empty($value) || $value == '0000-00-00 00:00:00') {
+                        $this->lastLogin = null;
+                    } else {
+                        $this->lastLogin = new \DateTime($value);
+                    }
+                    break;
+                case 'is_active_flag':
+                    $this->isActive = Php7Handler::Boolval($value);
+                    break;
+                case 'watchmail_mode':
+                    $this->watchmailMode = (int) $value;
+                    break;
+                case 'watchmail_day':
+                    $this->watchmailDay = (int) $value;
+                    break;
+                case 'watchmail_hour':
+                    $this->watchmailHour = (int) $value;
+                    break;
+                case 'activation_code':
+                    $this->activationCode = $value;
+                    break;
+                case 'notify_caches':
+                    $this->notifyCaches = Php7Handler::Boolval($value);
+                    break;
+                case 'notify_logs':
+                    $this->notifyLogs = Php7Handler::Boolval($value);
+                    break;
+                case 'permanent_login_flag':
+                    $this->permanentLogin = Php7Handler::Boolval($value);
                     break;
 
                 /* db fields not used in this class yet*/
                 case 'password':
-                case 'last_login':
-                case 'is_active_flag':
-                case 'hide_flag':
-                case 'date_created':
-                case 'description':
                     // just skip it...
                     break;
 
@@ -273,9 +380,6 @@ class User extends BaseObject
     /**
      * after delete a log it is a good idea to full recalculate stats of user, that can avoid
      * possible errors which used to appear when was calculated old method.
-     *
-     * by Andrzej Łza Woźniak, 10-2013
-     *
      */
     public function recalculateAndUpdateStats()
     {
@@ -286,13 +390,13 @@ class User extends BaseObject
                 `log_notes_count`= (SELECT count(*) FROM `cache_logs` WHERE `user_id` =:1 AND `type` =3 AND `deleted` =0 )
             WHERE `user_id` =:1
         ";
-        $db = OcDb::instance();
-        $db->multiVariableQuery($query, $this->userId);
 
-        $stmt = $db->multiVariableQuery(
+        $this->db->multiVariableQuery($query, $this->userId);
+
+        $stmt = $this->db->multiVariableQuery(
             'SELECT `founds_count`, `notfounds_count`, `log_notes_count` FROM  `user` WHERE `user_id` =:1',
             $this->userId);
-        $dbResult = $db->dbResultFetchOneRowOnly($stmt);
+        $dbResult = $this->db->dbResultFetchOneRowOnly($stmt);
 
         $this->setUserFieldsByUsedDbRow($dbResult);
     }
@@ -333,21 +437,23 @@ class User extends BaseObject
 
     public function getProfileUrl()
     {
+        if (!$this->profileUrl) {
+            $this->profileUrl = self::GetUserProfileUrl($this->getUserId());
+        }
         return $this->profileUrl;
     }
 
     /**
+     * Can user create cache without any finds (from user_settings table)
      *
      * @return boolean
      */
-    public function isIngnoreGeocacheLimitWhileCreatingNewGeocache()
+    public function getNewCachesNoLimit()
     {
-
-        if( is_null( $this->ingnoreGeocacheLimitWhileCreatingNewGeocache )){
+        if (is_null($this->newCachesNoLimit)) {
             $this->loadExtendedSettings();
         }
-
-        return $this->ingnoreGeocacheLimitWhileCreatingNewGeocache;
+        return $this->newCachesNoLimit;
     }
 
     /**
@@ -369,6 +475,15 @@ class User extends BaseObject
     }
 
     /**
+     *
+     * @return integer
+     */
+    public function getNotifyRadius()
+    {
+        return $this->notifyRadius;
+    }
+
+    /**
      * @return boolean
      */
     public function getIsAdmin()
@@ -376,7 +491,8 @@ class User extends BaseObject
         return $this->isAdmin;
     }
 
-    public function isAdmin(){
+    public function isAdmin()
+    {
         return $this->isAdmin;
     }
 
@@ -390,18 +506,22 @@ class User extends BaseObject
         return $this->isGuide;
     }
 
+    public function areRulesConfirmed()
+    {
+        return $this->rulesConfirmed;
+    }
+
     /**
      * get all PowerTrails user completed
      * @return \ArrayObject
      */
     public function getPowerTrailCompleted()
     {
-        if($this->powerTrailCompleted === null) {
+        if ($this->powerTrailCompleted === null) {
             $this->powerTrailCompleted = new \ArrayObject();
             $queryPtList = 'SELECT * FROM `PowerTrail` WHERE `id` IN (SELECT `PowerTrailId` FROM `PowerTrail_comments` WHERE `commentType` =2 AND `deleted` =0 AND `userId` =:1 ORDER BY `logDateTime` DESC)';
-            $db = OcDb::instance();
-            $stmt = $db->multiVariableQuery($queryPtList, $this->userId);
-            $ptList = $db->dbResultFetchAll($stmt);
+            $stmt = $this->db->multiVariableQuery($queryPtList, $this->userId);
+            $ptList = $this->db->dbResultFetchAll($stmt);
 
             foreach ($ptList as $ptRow) {
                 $this->powerTrailCompleted->append(new PowerTrail(array('dbRow' => $ptRow)));
@@ -416,15 +536,14 @@ class User extends BaseObject
      */
     public function getPowerTrailOwed()
     {
-        if($this->powerTrailOwed === null) {
+        if ($this->powerTrailOwed === null) {
             $this->powerTrailOwed = new \ArrayObject();
 
-            $db = OcDb::instance();
-            $stmt = $db->multiVariableQuery(
+            $stmt = $this->db->multiVariableQuery(
                 "SELECT `PowerTrail`.* FROM `PowerTrail`, PowerTrail_owners WHERE  PowerTrail_owners.userId = :1 AND PowerTrail_owners.PowerTrailId = PowerTrail.id",
                 $this->userId);
 
-            $ptList = $db->dbResultFetchAll( $stmt );
+            $ptList = $this->db->dbResultFetchAll( $stmt );
             foreach ($ptList as $ptRow) {
                 $this->powerTrailOwed->append(new PowerTrail(array('dbRow' => $ptRow)));
             }
@@ -434,24 +553,23 @@ class User extends BaseObject
 
     public function getGeocaches()
     {
-        if($this->geocaches === null){
+        if ($this->geocaches === null) {
             $this->geocaches = new \ArrayObject;
-            $db = OcDb::instance();
 
-            $stmt = $db->multiVariableQuery(
+            $stmt = $this->db->multiVariableQuery(
                 "SELECT * FROM `caches` where `user_id` = :1 ", $this->userId);
 
-            foreach ($db->dbResultFetchAll($stmt) as $geocacheRow) {
+            foreach ($this->db->dbResultFetchAll($stmt) as $geocacheRow) {
                 $geocache = new GeoCache();
                 $geocache->loadFromRow($geocacheRow);
                 $this->geocaches->append($geocache);
-                if($geocache->getStatus() === GeoCache::STATUS_NOTYETAVAILABLE){
+                if ($geocache->getStatus() === GeoCache::STATUS_NOTYETAVAILABLE) {
                     $this->appendNotPublishedGeocache($geocache);
                 }
-                if($geocache->getStatus() === GeoCache::STATUS_WAITAPPROVERS){
+                if ($geocache->getStatus() === GeoCache::STATUS_WAITAPPROVERS) {
                     $this->appendWaitAprooveGeocache($geocache);
                 }
-                if($geocache->getStatus() === GeoCache::STATUS_BLOCKED){
+                if ($geocache->getStatus() === GeoCache::STATUS_BLOCKED) {
                     $this->appendBlockedGeocache($geocache);
                 }
             }
@@ -463,7 +581,7 @@ class User extends BaseObject
 
     public function appendNotPublishedGeocache(GeoCache $geocache)
     {
-        if($this->geocachesNotPublished === null){
+        if ($this->geocachesNotPublished === null) {
             $this->geocachesNotPublished = new \ArrayObject;
         }
         $this->geocachesNotPublished->append($geocache);
@@ -471,7 +589,7 @@ class User extends BaseObject
 
     public function getGeocachesNotPublished()
     {
-        if($this->geocachesNotPublished === null){
+        if ($this->geocachesNotPublished === null) {
             $this->geocachesNotPublished = new \ArrayObject;
             $this->getGeocaches();
         }
@@ -480,7 +598,7 @@ class User extends BaseObject
 
     public function appendWaitAprooveGeocache(GeoCache $geocache)
     {
-        if($this->geocachesWaitAproove === null){
+        if ($this->geocachesWaitAproove === null) {
             $this->geocachesWaitAproove = new \ArrayObject;
         }
         $this->geocachesWaitAproove->append($geocache);
@@ -488,7 +606,7 @@ class User extends BaseObject
 
     public function getGeocachesWaitAproove()
     {
-        if($this->geocachesWaitAproove === null){
+        if ($this->geocachesWaitAproove === null) {
             $this->geocachesWaitAproove = new \ArrayObject;
             $this->getGeocaches();
         }
@@ -497,7 +615,7 @@ class User extends BaseObject
 
     public function appendBlockedGeocache(GeoCache $geocache)
     {
-        if($this->geocachesBlocked === null){
+        if ($this->geocachesBlocked === null) {
             $this->geocachesBlocked = new \ArrayObject;
         }
         $this->geocachesBlocked->append($geocache);
@@ -505,85 +623,89 @@ class User extends BaseObject
 
     public function getGeocachesBlocked()
     {
-        if($this->geocachesBlocked === null){
+        if ($this->geocachesBlocked === null) {
             $this->geocachesBlocked = new \ArrayObject;
             $this->getGeocaches();
         }
         return $this->geocachesBlocked;
     }
 
-    public function getVerifyAll(){
+    public function getVerifyAll()
+    {
         return $this->verifyAll;
+    }
+
+    public function getStatBan()
+    {
+        return $this->statBan;
     }
 
     /**
      * This function return true if user:
      * - own less than 3 (APPROVE_LIMIT) active caches
      * - has 'verify-all' flag set by COG/admins
-     * -
+     *
+     * @return boolean
      */
-    public function isUnderCacheVerification(){
-
-        if( $this->getVerifyAll() == 1 ){
+    public function isUnderCacheVerification()
+    {
+        if ( $this->getVerifyAll() == 1 ) {
             return true;
         }
 
         //get published geocaches count
-        $activeCachesNum = XDb::xMultiVariableQueryValue(
+        $activeCachesNum = $this->db->multiVariableQueryValue(
             "SELECT COUNT(*) FROM `caches`
              WHERE `user_id` = :1 AND status = 1",
              0, $this->getUserId());
 
-        if($activeCachesNum < OcConfig::getNeedAproveLimit()){
-
+        if ($activeCachesNum < OcConfig::getNeedAproveLimit()) {
             return true;
         }
-
-
         return false;
-
     }
 
     /**
-     * Returns true if user is able to create new cache:
-     * - when found more than X caches
-     * - is
+     * Returns true if user is able to create new cache
+     *
+     * @return boolean
      */
-    public function canCreateNewCache(){
-
-        // calculate found caches number
-        $num_find_caches = XDb::xMultiVariableQueryValue(
-            "SELECT COUNT(`cache_logs`.`cache_id`) as num_fcaches
-             FROM cache_logs, caches
-             WHERE cache_logs.cache_id=caches.cache_id
-                AND caches.type IN (1,2,3,7,8)
-                AND cache_logs.type=1
-                AND cache_logs.deleted=0
-                AND `cache_logs`.`user_id` = :1 ",
-                0, $this->getUserId() );
-
-
-        if ($num_find_caches < OcConfig::getNeedFindLimit() &&
-            !$this->isIngnoreGeocacheLimitWhileCreatingNewGeocache()){
-
-
-            return false;
-        }
-
-        return true;
-
+    public function canCreateNewCache()
+    {
+        return ($this->getFoundPhysicalGeocachesCount() >= OcConfig::getNeedFindLimit()
+            || $this->getNewCachesNoLimit());
     }
 
-    /*
+    /**
+     * Returns number of finds caches with physical container (used by newcache)
+     *
+     * @return int
+     */
+    public function getFoundPhysicalGeocachesCount()
+    {
+        if (is_null($this->foundPhysicalGeocachesCount)) {
+            $this->foundPhysicalGeocachesCount = $this->db->multiVariableQueryValue("
+                SELECT COUNT(`cache_logs`.`cache_id`)
+                FROM `cache_logs`, `caches`
+                WHERE `cache_logs`.`cache_id` = `caches`.`cache_id`
+                AND `caches`.`type` IN (1, 2, 3, 7, 8)
+                AND `cache_logs`.`type` = 1
+                AND `cache_logs`.`deleted` = 0
+                AND `cache_logs`.`user_id` = :1
+                ", 0, $this->getUserId());
+        }
+        return $this->foundPhysicalGeocachesCount;
+    }
+
+    /**
      * This function return true if user is allowed to adopt caches
      * This means when:
      * - is not under verification
      * - has rights to create new cache
      */
-    public function isAdoptionApplicable(){
-
-        if( $this->canCreateNewCache() && !$this->isUnderCacheVerification() ){
-
+    public function isAdoptionApplicable()
+    {
+        if ( $this->canCreateNewCache() && !$this->isUnderCacheVerification() ) {
             return true;
         }
         return false;
@@ -594,10 +716,13 @@ class User extends BaseObject
      */
     public function getEventsAttendsCount()
     {
-        if($this->eventsAttendsCount == null) {
-            $this->eventsAttendsCount = XDb::xSimpleQueryValue("SELECT COUNT(*) events_count
-                            FROM cache_logs
-                            WHERE user_id=".$this->userId." AND type=7 AND deleted=0", 0);
+        if ($this->eventsAttendsCount == null) {
+            $this->eventsAttendsCount =
+                $this->db->simpleQueryValue(
+                    "SELECT COUNT(*) events_count
+                    FROM cache_logs
+                    WHERE user_id=".$this->userId."
+                        AND type=7 AND deleted=0", 0);
         }
         return $this->eventsAttendsCount;
     }
@@ -626,35 +751,241 @@ class User extends BaseObject
         return $this->logNotesCount;
     }
 
+    public function getDateCreated()
+    {
+        return $this->dateCreated;
+    }
+
+    public function getDescription()
+    {
+        return $this->description;
+    }
+
+    public function getLastLoginDate()
+    {
+        return $this->lastLogin;
+    }
+
+    public function getWatchmailMode()
+    {
+        return $this->watchmailMode;
+    }
+
+    public function getWatchmailDay()
+    {
+        return $this->watchmailDay;
+    }
+
+    public function getWatchmailHour()
+    {
+        return $this->watchmailHour;
+    }
+
+    public function getNotifyCaches()
+    {
+        return $this->notifyCaches;
+    }
+
+    public function getNotifyLogs()
+    {
+        return $this->notifyLogs;
+    }
+
+    public function getActivationCode()
+    {
+        return $this->activationCode;
+    }
+
+    public function isActive()
+    {
+        return $this->isActive && !empty($this->getEmail());
+    }
+
+    public function getIsActive()
+    {
+        return $this->isActive;
+    }
+
+    public function usePermanentLogin()
+    {
+        return $this->permanentLogin;
+    }
+
     public function getGeokretyApiSecid()
     {
-        if($this->geokretyApiSecid === null){
-            $query = 'SELECT `secid` FROM `GeoKretyAPI` WHERE `userID` = :1 LIMIT 1';
-            $db = OcDb::instance();
-            $result = $db->dbResultFetchOneRowOnly($db->multiVariableQuery($query, $this->userId));
-            $this->geokretyApiSecid = $result['secid'];
+        if ($this->geokretyApiSecid === null) {
+            $this->geokretyApiSecid =
+            $this->db->multiVariableQueryValue(
+                    'SELECT `secid` FROM `GeoKretyAPI` WHERE `userID` = :1 LIMIT 1',
+                    '', $this->userId);
         }
         return $this->geokretyApiSecid;
     }
 
-    public static function GetUserNamesForListOfIds(array $userIds)
+    public function getCacheWatchEmailSettings()
     {
 
-        if(empty($userIds)){
-            return array();
-        }
-
-        $userIdsStr = XDb::xEscape(implode($userIds, ','));
-
-        $s = XDb::xSql(
-            "SELECT username FROM `user`
-            WHERE `user_id` IN ( $userIdsStr )");
-
-        $result = array();
-        while($row = XDb::xFetchArray($s)){
-            $result[] = $row['username'];
-        }
-
-        return $result;
+        return $this->db->dbResultFetchOneRowOnly(
+            $this->db->multiVariableQuery(
+                'SELECT watchmail_mode, watchmail_hour, watchmail_day
+                FROM user WHERE user_id = :1 LIMIT 1', $this->userId));
     }
+
+    public function updateCacheWatchEmailSettings(
+        $watchmail_mode, $watchmail_hour, $watchmail_day) {
+
+        $this->db->multiVariableQuery(
+            'UPDATE user SET watchmail_mode=:1, watchmail_hour=:2, watchmail_day=:3
+             WHERE user_id=:4 LIMIT 1',
+            $watchmail_mode, $watchmail_hour, $watchmail_day, $this->userId);
+
+    }
+
+    /**
+     * Updates primary user's MyNeighbourhood coords
+     * These coords are also "home coords" for user
+     *
+     * @param Coordinates $coords
+     * @param int $radius
+     * @return boolean
+     */
+    public function updateUserNeighbourhood(Coordinates $coords, $radius)
+    {
+        $this->homeCoordinates = $coords;
+        $this->notifyRadius = $radius;
+        return (null !== $this->db->multiVariableQuery('
+            UPDATE `user` SET
+              `latitude` = :1,
+              `longitude` = :2,
+              `notify_radius` = :3
+            WHERE `user_id` = :4
+            LIMIT 1
+            ', $coords->getLatitude(), $coords->getLongitude(), (int) $radius, $this->userId));
+    }
+
+    public static function updateLastLogin($userId)
+    {
+        self::db()->multiVariableQuery(
+            "UPDATE `user` SET `last_login` = NOW() WHERE `user_id` = :1", $userId);
+    }
+
+    /**
+     * Adds new user into the DB
+     *
+     * @param string $username
+     * @param string $password
+     * @param string $email
+     * @param boolean $rulesConfirmed
+     * @return boolean
+     */
+    public static function addUser($username, $password, $email, $rulesConfirmed = true)
+    {
+        return (null !== self::db()->multiVariableQuery('
+            INSERT INTO `user`
+                (`username`, `password`, `email`, `last_modified`,
+                `is_active_flag`, `date_created`, `uuid`, `activation_code`,
+                `node`, `rules_confirmed`)
+            VALUES
+                (:1, :2, :3, NOW(), 0 , NOW(), :4, :5, :6, :7)
+            ', $username, hash('sha512', md5($password)),
+            $email, Uuid::create(), TextGen::randomText(13),
+            OcConfig::instance()->getOcNodeId(), Php7Handler::Boolval($rulesConfirmed)));
+    }
+
+    /**
+     * Activate user (after registration)
+     *
+     * @param int $userId
+     * @return boolean
+     */
+    public static function activateUser($userId)
+    {
+        return (null !== self::db()->multiVariableQuery('
+            UPDATE `user`
+            SET `is_active_flag` = 1, `activation_code`=\'\', `last_modified` = NOW()
+            WHERE `user_id`= :1
+            ', $userId));
+    }
+
+    /**
+     * Check if user is already activated (after registration)
+     *
+     * @return boolean
+     */
+    public function isUserActivated()
+    {
+        return (empty($this->activationCode) || ($this->isActive));
+    }
+
+    /**
+     * Sets rules_confirmed flag for user and stores it in DB
+     *
+     * @return boolean
+     */
+    public function confirmRules()
+    {
+        $this->rulesConfirmed = true;
+        return (null !== $this->db->multiVariableQuery('
+            UPDATE `user`
+            SET `rules_confirmed` = 1
+            WHERE `user_id` = :1
+            LIMIT 1
+            ', $this->getUserId()));
+    }
+
+    /**
+     * Returns translations string for user last_login date
+     * see 'this_month', 'more_one_month', 'more_six_month', 'more_12_month'
+     * in translation files
+     *
+     * @return string
+     */
+    public function getLastLoginPeriodString()
+    {
+        // User has no last login date in DB - return 'unknow'
+        if ($this->getLastLoginDate() === null) {
+            return 'unknown';
+        }
+
+        $dateDiff = $this->getLastLoginDate()->diff(new \DateTime());
+        $monthsDiff = ($dateDiff->y * 12) + $dateDiff->m;
+
+        if ($monthsDiff > 12) {
+            return 'more_12_month';
+        } elseif ($monthsDiff > 6) {
+            return 'more_six_month';
+        } elseif ($monthsDiff > 1) {
+            return 'more_one_month';
+        } else {
+            return 'this_month';
+        }
+    }
+
+    /**
+     * Returns CSS class for user last_login date
+     * see also getLastLoginPeriodString()
+     *
+     * @return string
+     */
+    public function getLastLoginPeriodClass()
+    {
+        // User has no last login date in DB - return 'unknow'
+        if ($this->getLastLoginDate() === null) {
+            return 'text-color-dark';
+        }
+
+        $dateDiff = $this->getLastLoginDate()->diff(new \DateTime());
+        $monthsDiff = ($dateDiff->y * 12) + $dateDiff->m;
+
+        if ($monthsDiff > 12) {
+            return 'text-color-danger';
+        } elseif ($monthsDiff > 6) {
+            return 'text-color-warning';
+        } elseif ($monthsDiff > 1) {
+            return 'text-color-secondary';
+        } else {
+            return 'text-color-success';
+        }
+    }
+
 }

@@ -1,16 +1,3 @@
-<style>
-    .opt_table input { border: 0; }
-    .opt_table { background: #eee; margin: 3px auto; width:100% }
-    .opt_table th { background: #888; padding: 3px 8px 5px 8px; font-family: Tahoma; font-size: 13px; font-weight: bold; color: #fff; }
-    .opt_table td { padding: 3px 3px 3px 6px; font-family: Tahoma; font-size: 13px; vertical-align: top; }
-    .opt_table select { padding: 1px; font-family: Tahoma; font-size: 13px; border: 1px solid #888; }
-    .opt_table td.i { position: relative; width: 35px; display: block; }
-    .opt_table td.i img { position: absolute; top: 0; }
-    .opt_table .dim { color: #888; }
-    .opt_table .dim img { opacity: .3; }
-    #ext_search input.gsc-input { width: 10em; }
-</style>
-
 <div id="map_canvas" style="width: 100%; height: 100%; position: absolute; top: 0px;">
 </div>
 
@@ -45,7 +32,7 @@
         ?>
         <table id='powertrail_filter' class='opt_table' cellspacing="0">
             <tr>
-                <th colspan='2'>{{pt001}}</th>
+                <th colspan='2'>{{gp_mainTitile}}</th>
             </tr>
             <tr>
                 <td>
@@ -53,7 +40,7 @@
                             type="checkbox" checked="checked" onclick="reload()" />&nbsp;
                     <label for="pt_selection" style='display:inline-block; vertical-align:sub; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;'>
                         <a  href='{pt_url}' title='{pt_name}' target='_blank' style="text-decoration: none">
-                            <img width="20" height="20" src="{pt_icon}" alt="{{pt001}}" title='{pt_name}' />
+                            <img width="20" height="20" src="{pt_icon}" alt="{{gp_mainTitile}}" title='{pt_name}' />
                             {pt_name}
                         </a>
                     </label>
@@ -174,18 +161,15 @@
                 </td>
             </tr>
         </table>
-
     </div>
-
 </div>
 
 
 
 <input class="chbox" id="zoom" name="zoom" value="{zoom}" type="hidden" />
 
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
-<script src="{lib_cachemap3_js}" type="text/javascript"></script>
-<script type="text/javascript">
+<script src="{lib_cachemap3_js}"></script>
+<script>
 
 var map_params = { //params for cachemaps3.js
     cachemap_mapper: "{cachemap_mapper}",

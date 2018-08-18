@@ -2,16 +2,18 @@
 
 use Utils\Database\OcDb;
 use Utils\Gis\Gis;
+use Utils\Uri\Uri;
+use Utils\Uri\OcCookie;
+
 /**
  * This script is used (can be loaded) by /search.php
  */
-
 
 function findColumn($name, $type = "C")
 {
     global $colNameSearch;
 
-    for ($i = 0; $i < 19; $i ++) {
+    for ($i = 0; $i < 20; $i ++) {
         if ($colNameSearch[$i][$type] == $name)
             return $i;
     }
@@ -21,27 +23,25 @@ function findColumn($name, $type = "C")
 
 function fHideColumn($nr, $set)
 {
-    global $cookie, $selectList, $NrColVisable, $colNameSearch, $NrColSortSearch;
+    global $selectList, $NrColVisable, $colNameSearch, $NrColSortSearch;
 
     $sNameColumnsSearch = "NCSearch" . $nr;
 
     if (isset($_REQUEST["C" . $nr])) {
         $C = 1;
         if ($set) {
-            $cookie->set($sNameColumnsSearch, 1);
-            $cookie->header();
+            OcCookie::set($sNameColumnsSearch, 1, true);
         }
     } else {
         if (! isset($_REQUEST["notinit"])) // first ent.
 {
-            $C = 0;
-            if ($cookie->is_set($sNameColumnsSearch))
-                $C = $cookie->get($sNameColumnsSearch);
+
+            $C = OcCookie::getOrDefault($sNameColumnsSearch, 0);
+
         } else // next ent.
 {
             if ($set) {
-                $cookie->set($sNameColumnsSearch, 0);
-                $cookie->header();
+                OcCookie::set($sNameColumnsSearch, 0, true);
             }
             $C = 0;
         }
@@ -51,7 +51,7 @@ function fHideColumn($nr, $set)
         return $C;
 
     if ($C == 1) {
-        echo "<script type='text/javascript'>
+        echo "<script>
         gct.hideColumns([$nr]);
         </script>";
     } else {
@@ -66,9 +66,11 @@ function fHideColumn($nr, $set)
     return $C;
 }
 
-global $dbcSearch, $usr, $lang, $hide_coords, $cookie, $NrColSortSearch, $OrderSortSearch, $SearchWithSort, $TestStartTime, $queryFilter;
+global $dbcSearch, $usr, $lang, $hide_coords, $NrColSortSearch, $OrderSortSearch, $SearchWithSort, $TestStartTime, $queryFilter;
 require_once ($stylepath . '/lib/icons.inc.php');
 require_once ('lib/cache_icon.inc.php');
+require_once ('lib/calculation.inc.php');
+
 set_time_limit(1800);
 
 $dbc = OcDb::instance();
@@ -146,62 +148,67 @@ $colNameSearch = array(
         "O" => tr('DirectionDistance')
     ),
     17 => array(
-        "C" => tr('TT'),
+        "C" => tr('T_T'),
         "O" => tr('TaskTerainDifficulty')
     ),
     18 => array(
         "C" => "",
         "O" => tr('srch_Send_to_GPS')
-    )
+    ),
+    19 => array(
+        "C" => "cache_code",
+        "O" => "cache_code"
+    ),
 );
 
 $sDefCol4Search = "DefCol4Search";
-if (! $cookie->is_set($sDefCol4Search)) {
-    $cookie->set("NCSearch3", "1");
-    $cookie->set("NCSearch6", "1");
-    $cookie->set("NCSearch7", "1");
-    $cookie->set("NCSearch8", "1");
-    $cookie->set("NCSearch9", "1");
-    $cookie->set("NCSearch12", "1");
-    $cookie->set("NCSearch13", "1");
-    $cookie->set("NCSearch14", "1");
-    $cookie->set("NCSearch15", "1");
-    $cookie->set("NCSearch16", "1");
-    $cookie->set("NCSearch17", "1");
-    $cookie->set($sNrColumnsSortSearch, "-1");
-    $cookie->set($sOrderSortSearch, "M");
-
-    $cookie->set($sDefCol4Search, "Y");
-    $cookie->header();
+if (! OcCookie::contains($sDefCol4Search)) {
+    OcCookie::set("NCSearch3", "1");
+    OcCookie::set("NCSearch6", "1");
+    OcCookie::set("NCSearch7", "1");
+    OcCookie::set("NCSearch8", "1");
+    OcCookie::set("NCSearch9", "1");
+    OcCookie::set("NCSearch12", "1");
+    OcCookie::set("NCSearch13", "1");
+    OcCookie::set("NCSearch14", "1");
+    OcCookie::set("NCSearch15", "1");
+    OcCookie::set("NCSearch16", "1");
+    OcCookie::set("NCSearch17", "1");
+    OcCookie::set($sNrColumnsSortSearch, "-1");
+    OcCookie::set($sOrderSortSearch, "M");
+    OcCookie::set($sDefCol4Search, "Y");
 }
 
 if (! isset($_REQUEST["NrColSort"])) {
-    $NrColSortSearch = 1;
 
-    if ($cookie->is_set($sNrColumnsSortSearch))
-        $NrColSortSearch = $cookie->get($sNrColumnsSortSearch);
-    else
-        $cookie->set($sNrColumnsSortSearch, $NrColSortSearch);
+    if (OcCookie::contains($sNrColumnsSortSearch)){
+        $NrColSortSearch = OcCookie::get($sNrColumnsSortSearch);
+    }else{
+        OcCookie::set($sNrColumnsSortSearch, 1);
+    }
+
 } else {
+
     $NrColSortSearch = $_REQUEST["NrColSort"];
-    $cookie->set($sNrColumnsSortSearch, $NrColSortSearch);
+    OcCookie::set($sNrColumnsSortSearch, $NrColSortSearch);
+
 }
 
 // //////////////////////////////////
 
 if (! isset($_REQUEST["OrderSortSearch"])) {
-    $OrderSortSearch = "M";
 
-    if ($cookie->is_set($sOrderSortSearch))
-        $OrderSortSearch = $cookie->get($sOrderSortSearch);
-    else
-        $cookie->set($sOrderSortSearch, $OrderSortSearch);
+    if (OcCookie::contains($sOrderSortSearch)){
+        $OrderSortSearch = OcCookie::get($sOrderSortSearch);
+    }else{
+        OcCookie::set($sOrderSortSearch, "M");
+    }
 } else {
     $OrderSortSearch = $_REQUEST["OrderSortSearch"];
-    $cookie->set($sOrderSortSearch, $OrderSortSearch);
+    OcCookie::set($sOrderSortSearch, $OrderSortSearch);
 }
 
-$cookie->header();
+OcCookie::saveInHeader();
 
 // build SQL-list
 $countselect = mb_eregi_replace('^SELECT `cache_id`', 'SELECT COUNT(`cache_id`) `count`', $queryFilter);
@@ -302,7 +309,7 @@ if ($usr === false) {
 } else {
     if ($CalcCoordinates) {
         $query .= ', IFNULL(`cache_mod_cords`.`longitude`, `caches`.`longitude`) `longitude`, IFNULL(`cache_mod_cords`.`latitude`,
-                            `caches`.`latitude`) `latitude`, IFNULL(cache_mod_cords.id,0) as cache_mod_cords_id';
+                            `caches`.`latitude`) `latitude`, IFNULL(cache_mod_cords.longitude,0) as cache_mod_cords_id';
     }
 
     $query .= ' FROM `caches` ';
@@ -375,7 +382,6 @@ for ($i = 0; $i < $dbcSearch->rowCount($s); $i ++) {
     $tmpline = str_replace('{toprating}', $ratingA, $tmpline);
     $tmpline = str_replace('{ratpic}', $ratingimg, $tmpline);
 
-    $login = 0;
     if ($usr == false) {
         $tmpline = str_replace('{long}', tr('please_login'), $tmpline);
         $tmpline = str_replace('{lat}', tr('to_see_coords'), $tmpline);
@@ -446,7 +452,7 @@ for ($i = 0; $i < $dbcSearch->rowCount($s); $i ++) {
     $tmpline = str_replace('{notfind}', $typy[1], $tmpline);
     $tmpline = str_replace('{comment}', $typy[2], $tmpline);
 
-    // das letzte found suchen
+    // search the last found
     if ($CalcEntry) {
 
         $rs = $dbc->multiVariableQuery(
@@ -482,7 +488,7 @@ for ($i = 0; $i < $dbcSearch->rowCount($s); $i ++) {
     $lastlogs = "";
 
     if ($CalcDistance) {
-        // und jetzt noch die Richtung ...
+        // and now the direction ...
         if ($caches_record['distance'] > 0 && ($usr || ! $hide_coords)) {
             $tmpline = str_replace('{direction}',
                 Gis::bearing2Text(
@@ -525,6 +531,7 @@ for ($i = 0; $i < $dbcSearch->rowCount($s); $i ++) {
     $tmpline = str_replace('{username}', htmlspecialchars($caches_record['username'], ENT_COMPAT, 'UTF-8'), $tmpline);
     $tmpline = str_replace('{usernameBIG}', strtoupper(trChar(htmlspecialchars($caches_record['username'], ENT_COMPAT, 'UTF-8'))), $tmpline);
     $tmpline = str_replace('{CacheID}', $caches_record['cache_id'], $tmpline);
+    $tmpline = str_replace('{style}', $caches_record['status'] >= 4 ? $unpublished_cache_style : '', $tmpline);
 
     if ($CalcDistance) {
         if ($usr || ! $hide_coords) {
@@ -615,25 +622,25 @@ if ($topage > 1) {
 $lhideColumns = 'search.php?queryid=' . $options['queryid'] . '&amp;startat=0';
 tpl_set_var('lhideColumns', $lhideColumns);
 
-// speichern-link
+// save-link
 if ($usr === false)
     tpl_set_var('safelink', '');
 else
     tpl_set_var('safelink', str_replace('{queryid}', $options['queryid'], $safelink));
 
-    // downloads
+// downloads
 if ($usr || ! $hide_coords)
     tpl_set_var('queryid', $options['queryid']);
-tpl_set_var('startat', $startat);
+    tpl_set_var('startat', $startat);
 
-tpl_set_var('startatp1', $startat + 1);
+    tpl_set_var('startatp1', $startat + 1);
 
     //if (($resultcount - $startat) < 500)
         tpl_set_var('endat', $startat + $resultcount - $startat);
     //else
         //tpl_set_var('endat', $startat + 500);
 
-    // kompatibilitĂ¤t!
+    // compatibility!
     if ($distance_unit == 'sm')
         tpl_set_var('distanceunit', 'mi');
     else if ($distance_unit == 'nm')
@@ -641,30 +648,10 @@ tpl_set_var('startatp1', $startat + 1);
     else
         tpl_set_var('distanceunit', $distance_unit);
 
-    if ($usr !== false){
-        $queryid = $options['queryid'];
-        $google_kml_link = $absolute_server_URI . "search.php?queryid=$queryid&output=kml&startat=$startat";
-        $google_kml_link .= requestSigner::get_signature_text();
-
-        $google_kml_link_all = $google_kml_link.'&count=max&zip=1';
-
-        $domain = substr(trim($absolute_server_URI,'/'),-2,2); // It should be done better
-
-        $google_maps_link = "//maps.google.$domain/maps?f=q&hl=$lang&geocode=&q=";
-        $google_maps_link_all = "//maps.google.$domain/maps?f=q&hl=$lang&geocode=&ie=UTF8&z=7&q=";
-
-
-        $google_maps_link = htmlentities($google_maps_link).urlencode($google_kml_link);
-        $google_maps_link_all = htmlentities($google_maps_link_all).urlencode($google_kml_link_all);
-
-        tpl_set_var('google_maps_link', $google_maps_link);
-        tpl_set_var('google_maps_link_all', $google_maps_link_all);
-    }
-
-
+    $view->addLocalCss(Uri::getLinkWithModificationTime('tpl/stdstyle/css/GCT.css'));
+    $view->addLocalCss(Uri::getLinkWithModificationTime('tpl/stdstyle/css/GCTStats.css'));
 
     tpl_BuildTemplate();
-
 
 function trChar( $word )
 {

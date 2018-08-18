@@ -7,7 +7,7 @@
 
 
     <div class="big infotitle"><b>{$name}</b></div>
-    {$page} {if $smarty.get.page}{$smarty.get.page}/{$max}{else}1/{$max}{/if}
+    {$page} {if isset($smarty.get.page)}{$smarty.get.page}/{$max}{else}1/{$max}{/if}
 
     {section name=i loop=$logs}
 
@@ -18,7 +18,7 @@
 
         <b>{$logs[i].newdate} #
 
-            {if $smarty.session.user_id}
+            {if isset($smarty.session.user_id)}
                 <a href='./user.php?id={$logs[i].user_id}'>{$logs[i].username}</a>
             {else}
                 {$logs[i].username}
@@ -78,7 +78,7 @@
                                                             {$logtype}</b><br/><br/>
                                                         </span>
 
-                                                        {if $smarty.session.user_id && $logs[i].user_id eq $smarty.session.user_id}
+                                                        {if isset($smarty.session.user_id) && $logs[i].user_id eq $smarty.session.user_id}
 
                                                             <table class="tablefooter">
                                                                 <tr>

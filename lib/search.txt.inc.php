@@ -3,16 +3,24 @@
  * This script is used (can be loaded) by /search.php
  */
 
+ob_start();
+
 use Utils\Database\XDb;
 use Utils\Database\OcDb;
+use Utils\Text\Rot13;
+use lib\Objects\GeoCache\GeoCacheCommons;
+use lib\Objects\GeoCache\CacheNote;
 
 global $content, $bUseZip, $hide_coords, $usr, $lang, $dbcSearch;
 
-    set_time_limit(1800);
-    $cache = cache::instance();
-    $cacheSizes = $cache->getCacheSizes();
-    $cacheTypesArr = $cache->getCacheTypeIcons();
-    $cacheStatusArr = $cache->getCacheStatuses();
+set_time_limit(1800);
+
+require_once ('lib/calculation.inc.php');
+
+
+$cache = cache::instance();
+$cacheTypesArr = $cache->getCacheTypeIcons();
+$cacheStatusArr = $cache->getCacheStatuses();
 
     $txtLine = chr(239) . chr(187) . chr(191) .tr('search_text_01')." {mod_suffix}{cachename} ".tr('search_text_02')." {owner}
 ".tr('search_text_03')." {lat} {lon}
@@ -83,7 +91,7 @@ if( $usr || !$hide_coords ) {
                 FROM `caches` ';
     } else {
         $query .= ' IFNULL(`cache_mod_cords`.`longitude`, `caches`.`longitude`) `longitude`, IFNULL(`cache_mod_cords`.`latitude`,
-                  `caches`.`latitude`) `latitude`, IFNULL(cache_mod_cords.id,0) as cache_mod_cords_id FROM `caches`
+                  `caches`.`latitude`) `latitude`, IFNULL(cache_mod_cords.latitude,0) as cache_mod_cords_id FROM `caches`
                   LEFT JOIN `cache_mod_cords` ON `caches`.`cache_id` = `cache_mod_cords`.`cache_id` AND `cache_mod_cords`.`user_id` = '
                   . $usr['userid'];
     }
@@ -124,7 +132,7 @@ if( $usr || !$hide_coords ) {
 
     $queryLimit = ' LIMIT ' . $startat . ', ' . $count;
 
-    // temporĂ¤re tabelle erstellen
+    // temporary table
     $dbcSearch->simpleQuery('CREATE TEMPORARY TABLE `txtcontent` ' . $query . $queryLimit);
 
     $s = $dbcSearch->simpleQuery('SELECT COUNT(*) `count` FROM `txtcontent`');
@@ -153,7 +161,7 @@ if( $usr || !$hide_coords ) {
                 $sFilebasename = trim($rName['name']);
                 $sFilebasename = str_replace(" ", "_", $sFilebasename);
             } else {
-                $sFilebasename = "$short_sitename" . $options['queryid'];
+                $sFilebasename = "search" . $options['queryid'];
             }
         }
     }
@@ -165,15 +173,6 @@ if( $usr || !$hide_coords ) {
         $content = '';
         require_once($rootpath . 'lib/phpzip/ss_zip.class.php');
         $phpzip = new ss_zip('',6);
-    }
-
-
-    if ($bUseZip == true) {
-        header("content-type: application/zip");
-        header('Content-Disposition: attachment; filename=' . $sFilebasename . '.zip');
-    } else {
-        header("Content-type: text/plain");
-        header("Content-Disposition: attachment; filename=" . $sFilebasename . ".txt");
     }
 
     $stmt = XDb::xSql('SELECT `txtcontent`.`cache_id` `cacheid`, `txtcontent`.`longitude` `longitude`, `txtcontent`.`latitude` `latitude`, `txtcontent`.cache_mod_cords_id, `caches`.`wp_oc` `waypoint`, `caches`.`date_hidden` `date_hidden`, `caches`.`name` `name`, `caches`.`country` `country`, `caches`.`terrain` `terrain`, `caches`.`difficulty` `difficulty`, `caches`.`desc_languages` `desc_languages`, `cache_size`.`id` `size`, `caches`.`type` `type_id`, `caches`.`status` `status`, `user`.`username` `username`, `cache_desc`.`desc` `desc`, `cache_desc`.`short_desc` `short_desc`, `cache_desc`.`hint` `hint`, `cache_desc`.`desc_html` `html`, `cache_desc`.`rr_comment`, `caches`.`logpw` FROM `txtcontent`, `caches`, `user`, `cache_desc`, `cache_size` WHERE `txtcontent`.`cache_id`=`caches`.`cache_id` AND `caches`.`cache_id`=`cache_desc`.`cache_id` AND `caches`.`default_desclang`=`cache_desc`.`language` AND `txtcontent`.`user_id`=`user`.`user_id` AND `caches`.`size`=`cache_size`.`id`');
@@ -230,7 +229,7 @@ if( $usr || !$hide_coords ) {
         if ($r['hint'] == '') {
             $thisline = str_replace('{hints}', '', $thisline);
         } else {
-            $thisline = str_replace('{hints}', str_rot13_html(strip_tags($r['hint'])), $thisline);
+            $thisline = str_replace('{hints}', Rot13::withoutHtml(strip_tags($r['hint'])), $thisline);
         }
 
         $logpw = ($r['logpw']==""?"":"".tr('search_text_14')." <br/>");
@@ -246,13 +245,13 @@ if( $usr || !$hide_coords ) {
         }
 
         if ($usr == true) {
-            $notes_rs = XDb::xSql(
-                "SELECT  `cache_notes`.`desc` `desc` FROM `cache_notes`
-                WHERE `cache_notes` .`user_id`= ? AND `cache_notes`.`cache_id`= ? ",
-                $usr['userid'], $r['cacheid']);
 
-            if ( $cn = XDb::xFetchArray($notes_rs) ) {
-                $thisline = str_replace('{personal_cache_note}', html2txt("<br/><br/>-- ".tr('search_text_16')." --<br/> ".$cn['desc']."<br/>"), $thisline);
+            $cacheNote = CacheNote::getNote($usr['userid'], $r['cacheid']);
+
+            if ( !empty($cacheNote) ) {
+                $thisline = str_replace('{personal_cache_note}',
+                    html2txt("<br/><br/>-- ".tr('search_text_16')." --<br/> ".
+                        $cacheNote . "<br/>"), $thisline);
             } else {
                 $thisline = str_replace('{personal_cache_note}', "", $thisline);
             }
@@ -266,7 +265,7 @@ if( $usr || !$hide_coords ) {
             $thisline = str_replace('{rr_comment}', html2txt("<br /><br />--------<br />".$r['rr_comment']), $thisline);
         }
         $thisline = str_replace('{type}', tr($cacheTypesArr[$r['type_id']]['translation']), $thisline);
-        $thisline = str_replace('{container}', tr($cacheSizes[$r['size']]['translation']), $thisline);
+        $thisline = str_replace('{container}', tr(GeoCacheCommons::CacheSizeTranslationKey($r['size'])), $thisline);
         $thisline = str_replace('{status}', tr($cacheStatusArr[$r['status']]['translation']), $thisline);
 
         $difficulty = sprintf('%01.1f', $r['difficulty'] / 2);
@@ -312,38 +311,22 @@ if( $usr || !$hide_coords ) {
             echo $thisline;
         } else {
             $phpzip->add_data($r['waypoint'] . '.txt', $thisline);
+            ob_flush();
         }
-        ob_flush();
     }
     $dbcSearch->simpleQuery('DROP TABLE `txtcontent` ');
 
-    // phpzip versenden
+    // compress using phpzip
     if ($bUseZip == true) {
-        echo $phpzip->save($sFilebasename . '.zip', 'b');
+        header("content-type: application/zip");
+        header('Content-Disposition: attachment; filename=' . $sFilebasename . '.zip');
+        $out = $phpzip->save($sFilebasename . '.zip', 'b');
+        echo $out;
+        ob_end_flush();
+    } else {
+        header("Content-type: text/plain");
+        header("Content-Disposition: attachment; filename=" . $sFilebasename . ".txt");
+        ob_end_flush();
     }
 }
 exit;
-
-function html2txt($html)
-{
-    $str = preg_replace('/[[:cntrl:]]/', '', $html);
-    $str = str_replace("\r\n", '', $str);
-    $str = str_replace("\n", '', $str);
-    $str = str_replace('<br />', "\n", $str);
-    $str = str_replace('<br>', "\n", $str);
-    $str = str_replace('</p>', "\n", $str);
-    $str = str_replace('<li>', "-", $str);
-    $str = str_replace('&quot;', '"', $str);
-    $str = str_replace('&amp;', '&', $str);
-    $str = str_replace('&lt;', '<', $str);
-    $str = str_replace('&gt;', '>', $str);
-    $str = strip_tags($str);
-
-    return $str;
-}
-
-function lf2crlf($str)
-{
-    return str_replace("\r\r\n" ,"\r\n" , str_replace("\n" ,"\r\n" , $str));
-}
-

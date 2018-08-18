@@ -1,7 +1,5 @@
-<?php
 
-?>
-<script type="text/javascript" src="lib/js/wz_tooltip.js"></script>
+<script src="lib/js/wz_tooltip.js"></script>
 <div class="content2-pagetitle"><img src="tpl/stdstyle/images/blue/cache.png" class="icon32" alt="" title="" align="middle"/>&nbsp;{{my_caches_status}}: <font color="black">{cache_stat}</font></div>
 
 
@@ -15,7 +13,7 @@
             <a class="btn btn-default btn-sm" href="mycaches.php?status=6">{{blocked}} ({blockedN})</a>
     </div>
 </div>
-    
+
 <p>&nbsp;</p>
 <div class="searchdiv">
     <table border="0" cellspacing="2" cellpadding="1" style="margin-left: 10px; line-height: 1.4em; font-size: 13px;" width="95%">

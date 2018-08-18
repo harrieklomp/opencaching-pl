@@ -3,6 +3,7 @@
 use Utils\Database\XDb;
 use Utils\Database\OcDb;
 use lib\Objects\GeoCache\GeoCacheLog;
+
 global $lang, $rootpath, $usr, $dateFormat;
 
 if (!isset($rootpath))
@@ -32,7 +33,7 @@ if ($error == false) {
         $tplname = 'mycaches';
         require($stylepath . '/newlogs.inc.php');
 
-        if (checkField('cache_status', $lang))
+        if (XDb::xContainsColumn('cache_status', $lang))
             $lang_db = $lang;
         else
             $lang_db = "en";
@@ -198,7 +199,6 @@ if ($error == false) {
                 cache_logs.text AS log_text,
                 DATE_FORMAT(cache_logs.date,'%Y-%m-%d') AS log_date,
                 caches.user_id AS cache_owner,
-                cache_logs.encrypt encrypt,
                 cache_logs.user_id AS luser_id,
                 user.username AS user_name,
                 user.user_id AS user_id,
@@ -258,23 +258,8 @@ if ($error == false) {
             for ($yy = 0; $yy < $log_entries_count; $yy++) {
                 $logs = $log_entries_all [$yy];
                 $table .= '<a class="links" href="viewlogs.php?logid=' . htmlspecialchars($logs['id'], ENT_COMPAT, 'UTF-8') . '" onmouseover="Tip(\'';
-                $table .= '<b>' . $logs['user_name'] . '</b>&nbsp;(' . htmlspecialchars(date($dateFormat, strtotime($logs['log_date'])), ENT_COMPAT, 'UTF-8') . '):';
-
-                if ($logs['encrypt'] == 1 && $logs['cache_owner'] != $usr['userid'] && $logs['luser_id'] != $usr['userid']) {
-                    $table .= "<img src=\'/tpl/stdstyle/images/free_icons/lock.png\' alt=\`\` /><br/>";
-                }
-                if ($logs['encrypt'] == 1 && ($logs['cache_owner'] == $usr['userid'] || $logs['luser_id'] == $usr['userid'])) {
-                    $table .= "<img src=\'/tpl/stdstyle/images/free_icons/lock_open.png\' alt=\`\` /><br/>";
-                }
-                $data = GeoCacheLog::cleanLogTextForToolTip( $logs['log_text'] );
-
-                if ($logs['encrypt'] == 1 && $logs['cache_owner'] != $usr['userid'] && $logs['luser_id'] != $usr['userid']) {
-                    //crypt the log ROT13, but keep HTML-Tags and Entities
-                    $data = str_rot13_html($data);
-                } else {
-                    $table .= "<br/>";
-                }
-                $table .= $data;
+                $table .= '<b>' . $logs['user_name'] . '</b>&nbsp;(' . htmlspecialchars(date($dateFormat, strtotime($logs['log_date'])), ENT_COMPAT, 'UTF-8') . '):<br>';
+                $table .= GeoCacheLog::cleanLogTextForToolTip( $logs['log_text'] );
                 // sprawdz ile dni minelo od wpisania logu
                 if ($logs['ilosc_dni'] < 3)
                     $oznacz = 'style="border: 1px green solid;"';

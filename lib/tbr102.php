@@ -1,5 +1,9 @@
 <?php
 use Utils\Database\OcDb;
+
+$rootpath = "../";
+require_once('common.inc.php');
+
 ?>
 <html>
     <head>
@@ -8,30 +12,11 @@ use Utils\Database\OcDb;
     <body>
         <div id="idGCB"></div>
 
-        <script type="text/javascript">
-            TimeTrack("START");
-        </script>
+<script>GCTLoad( 'ChartBar', '', 1 );</script>
 
-        <?php
-        global $debug_page;
-//if ( $debug_page )
-//  echo "<script type='text/javascript'>TimeTrack( 'DEBUG' );</script>";
-        ?>
-
-
-        <?php
-        echo "<script type='text/javascript'>";
-        echo "GCTLoad( 'ChartBar', '', 1 );";
-        echo "</script>";
-        ?>
-
-
-        <script type="text/javascript">
-
+        <script>
             var gcb = new GCT('idGCB');
             gcb.addColumn('string', 'UserName');
-
-
         </script>
 
         <?php
@@ -40,17 +25,6 @@ use Utils\Database\OcDb;
         $sTypeCondition = "";
 
         global $lang;
-
-        require_once('settings.inc.php');
-        require_once('language.inc.php');
-        require_once('cookie.class.php');
-
-        if ($cookie->is_set('lang'))
-            $lang = $cookie->get('lang');
-
-        require_once __DIR__.'/ClassPathDictionary.php';
-
-
 
         $sUserIDLine = $_REQUEST["UserID"];
         $sDateFrom = $_REQUEST["DF"];
@@ -104,7 +78,7 @@ use Utils\Database\OcDb;
             $sEND = tr2('more30', $lang);
 
         if ($sEND <> "") {
-            echo "<script type='text/javascript'>";
+            echo "<script>";
             echo "alert( '$sEND' );";
             //$asUserID = explode(",", "");
             echo "</script>";
@@ -113,7 +87,7 @@ use Utils\Database\OcDb;
 
 
         if ($sEND <> "") {
-            echo "<script type='text/javascript'>";
+            echo "<script>";
             echo "return;";
             echo "</script>";
         }
@@ -159,7 +133,7 @@ use Utils\Database\OcDb;
         $aNrColumn = array();
         $i = 0;
 
-        echo "<script type='text/javascript'>";
+        echo "<script>";
 
         while ($record = $dbc->dbResultFetch($s)) {
 
@@ -203,7 +177,7 @@ use Utils\Database\OcDb;
             $s = $dbc->multiVariableQuery($query);
 
 
-            echo "<script type='text/javascript'>";
+            echo "<script>";
 
             $nStart = 1;
             while ($record = $dbc->dbResultFetch($s)) {
@@ -235,15 +209,8 @@ use Utils\Database\OcDb;
         ?>
 
 
-        <script type="text/javascript">
+        <script>
             gcb.drawChart(1);
         </script>
-
-        <script type="text/javascript">
-            TimeTrack("END", "SB102");
-        </script>
-
     </body>
-
 </html>
-

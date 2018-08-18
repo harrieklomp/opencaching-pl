@@ -1,12 +1,15 @@
 <?php
 namespace lib\Objects\GeoCache;
 
+use Utils\DateTime\Year;
+use lib\Objects\BaseObject;
+
 /**
  * Common consts etc. for geocaches
  *
  */
 
-class GeoCacheCommons{
+class GeoCacheCommons extends BaseObject {
 
     const TYPE_OTHERTYPE = 1;
     const TYPE_TRADITIONAL = 2;
@@ -34,6 +37,20 @@ class GeoCacheCommons{
     const SIZE_LARGE = 5;
     const SIZE_XLARGE = 6;
     const SIZE_OTHER = 1;
+
+    const RECOMENDATION_RATIO = 10; //percentage of founds which can be recomeded by user
+
+    const MIN_SCORE_OF_RATING_5 = 2.2;
+    const MIN_SCORE_OF_RATING_4 = 1.4;
+    const MIN_SCORE_OF_RATING_3 = 0.1;
+    const MIN_SCORE_OF_RATING_2 = -1.0;
+
+    const ICON_PATH = '/tpl/stdstyle/images/cache/'; //path to the dir with cache icons
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
 
     public static function CacheTypeTranslationKey($type){
 
@@ -72,19 +89,34 @@ class GeoCacheCommons{
     public static function CacheSizeTranslationKey($sizeId)
     {
         switch ($sizeId) {
-            case self::SIZE_OTHER:  return 'size_00';
-            case self::SIZE_NANO:   return 'size_01';
-            case self::SIZE_MICRO:  return 'size_02';
-            case self::SIZE_SMALL:  return 'size_03';
-            case self::SIZE_REGULAR:return 'size_04';
-            case self::SIZE_LARGE:  return 'size_05';
-            case self::SIZE_XLARGE: return 'size_06';
-            case self::SIZE_NONE:   return 'size_07';
+            case self::SIZE_OTHER:  return 'cacheSize_other';
+            case self::SIZE_NANO:   return 'cacheSize_nano';
+            case self::SIZE_MICRO:  return 'cacheSize_micro';
+            case self::SIZE_SMALL:  return 'cacheSize_small';
+            case self::SIZE_REGULAR:return 'cacheSize_regular';
+            case self::SIZE_LARGE:  return 'cacheSize_large';
+            case self::SIZE_XLARGE: return 'cacheSize_xLarge';
+            case self::SIZE_NONE:   return 'cacheSize_none';
             default:
                 error_log(__METHOD__ . ' Unknown cache sizeId: ' . $sizeId);
                 return 'size_04';
         }
     }
+
+    public static function CacheSizesArray()
+    {
+        return array(
+            self::SIZE_NONE,
+            //self::SIZE_NANO,
+            self::SIZE_MICRO,
+            self::SIZE_SMALL,
+            self::SIZE_REGULAR,
+            self::SIZE_LARGE,
+            self::SIZE_XLARGE,
+            //self::SIZE_OTHER
+        );
+    }
+
 
     /**
      * Returns TypeId of the cache based on OKAPI description
@@ -176,11 +208,17 @@ class GeoCacheCommons{
     /**
      * Retrurn cache icon based on its type and status
      *
-     * @param enum $type
-     * @param enum $status
+     * @param enum $type the cache type
+     * @param enum $status the cache status
+     * @param enum $logStatus (optional) log status information to include in icon
+     * @param bool $fileNameOnly (optional) true if the result should be a filename,
+     *     false (default) if it should be prefixed by full path
+     * @param bool $isOwner (optional) true if the icon should be for the cache owner,
+     *     false (default) otherwise
      * @return string - path + filename of the right icon
      */
-    public static function CacheIconByType($type, $status, $logStatus = null)
+    public static function CacheIconByType(
+        $type, $status, $logStatus = null, $fileNameOnly = false, $isOwner = false)
     {
 
         $statusPart = ""; //part of icon name represents cache status
@@ -209,9 +247,13 @@ class GeoCacheCommons{
             case GeoCacheLog::LOGTYPE_DIDNOTFIND:
                 $logStatusPart = '-dnf';
                 break;
+            default:
+                if ($isOwner) {
+                    $logStatusPart = '-owner';
+                }
         }
 
-        $typePart = ""; //part of icon name represents cache name
+        $typePart = ""; //part of icon name represents cache type
         switch ($type) {
             case self::TYPE_OTHERTYPE:
                 $typePart = 'unknown';
@@ -251,7 +293,11 @@ class GeoCacheCommons{
                 break;
         }
 
-        return 'tpl/stdstyle/images/cache/' . $typePart . $statusPart . $logStatusPart . '.png';
+        if($fileNameOnly){
+            return $typePart . $statusPart . $logStatusPart . '.png';
+        }else{
+            return self::ICON_PATH . $typePart . $statusPart . $logStatusPart . '.png';
+        }
     }
 
     /**
@@ -260,17 +306,17 @@ class GeoCacheCommons{
      * - RatingId is counted by OKAPI and has value in range <1;5>
      * Do not confuse them with each other!
      *
-     * @param unknown $score
+     * @param float $score
      * @return number
      */
     public static function ScoreAsRatingNum($score)
     {
         // former score2ratingnum
 
-        if ($score >= 2.2) return 5;
-        if ($score >= 1.4) return 4;
-        if ($score >= 0.1) return 3;
-        if ($score >= -1.0) return 2;
+        if ($score >= self::MIN_SCORE_OF_RATING_5) return 5;
+        if ($score >= self::MIN_SCORE_OF_RATING_4) return 4;
+        if ($score >= self::MIN_SCORE_OF_RATING_3) return 3;
+        if ($score >= self::MIN_SCORE_OF_RATING_2) return 2;
         return 1;
     }
 
@@ -314,25 +360,45 @@ class GeoCacheCommons{
      */
     public static function CacheRatingTranslationKey($ratingId)
     {
-        // prima-aprilis joke ;-)
-        if ((date('m') != 4) || ( date('d') != 1)) {
-            switch($ratingId){
-                case 1: return 'rating_poor';
-                case 2: return 'rating_mediocre';
-                case 3: return 'rating_avarage';
-                case 4: return 'rating_good';
-                case 5: return 'rating_excellent';
-            }
-        } else {
-            switch($ratingId){
-                case 1: return 'rating_poor_1A';
-                case 2: return 'rating_mediocre_1A';
-                case 3: return 'rating_avarage_1A';
-                case 4: return 'rating_good_1A';
-                case 5: return 'rating_excellent_1A';
-            }
+        switch($ratingId){
+            case 1: return 'rating_poor';
+            case 2: return 'rating_mediocre';
+            case 3: return 'rating_avarage';
+            case 4: return 'rating_good';
+            case 5: return 'rating_excellent';
         }
     }
 
+
+    /**
+     * This function provides abbreviation for cache type
+     * @param unknown $type
+     */
+    public static function Type2Letter($type){
+        $type = (int) $type;
+        switch ($type) {
+            case self::TYPE_OTHERTYPE:
+            default:
+                return "u";
+            case self::TYPE_TRADITIONAL:
+                return "t";
+            case self::TYPE_MULTICACHE:
+                return "m";
+            case self::TYPE_VIRTUAL:
+                return "v";
+            case self::TYPE_WEBCAM:
+                return "w";
+            case self::TYPE_EVENT:
+                return "e";
+            case self::TYPE_QUIZ:
+                return "q";
+            case self::TYPE_MOVING:
+                return "m";
+        }
+    }
+
+    public static function GetCacheUrlByWp($ocWaypoint){
+        return '/viewcache.php?wp=' . $ocWaypoint;
+    }
 }
 

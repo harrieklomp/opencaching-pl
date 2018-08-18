@@ -3,6 +3,9 @@
 use lib\Objects\GeoCache\GeoCache;
 use Utils\Database\OcDb;
 use Utils\Database\XDb;
+use lib\Objects\Coordinates\Altitude;
+use lib\Objects\Coordinates\Coordinates;
+use Utils\Generators\TextGen;
 
 /**
  * ajaxAddCacheToPt.php
@@ -118,7 +121,7 @@ function geocacheStatusCheck($cacheId)
     if (in_array($geocache->getCacheType(), $forbidenGeocacheTypes)) {
         print 'geocache of this type cannot be added';
         return false;
-    } 
+    }
     return true;
 }
 
@@ -199,13 +202,16 @@ function getCachePoints($cacheId)
     $sizePoints = powerTrailBase::cacheSizePoints();
     $typePoints = $typePoints[$cacheData['type']];
     $sizePoints = $sizePoints[$cacheData['size']];
-    $url = 'http://maps.googleapis.com/maps/api/elevation/xml?locations=' . $cacheData['latitude'] . ',' . $cacheData['longitude'] . '&sensor=false';
-    $altitude = simplexml_load_file($url);
-    $altitude = round($altitude->result->elevation);
-    if ($altitude <= 400)
+
+    $altitude = Altitude::getAltitude(
+        Coordinates::FromCoordsFactory($cacheData['latitude'], $cacheData['longitude']));
+
+    $altitude = round($altitude);
+    if ($altitude <= 400){
         $altPoints = 1;
-    else
+    }else{
         $altPoints = 1 + ($altitude - 400) / 200;
+    }
     $difficPoint = round($cacheData['difficulty'] / 3, 2);
     $terrainPoints = round($cacheData['terrain'] / 3, 2);
     return ($altPoints + $typePoints + $sizePoints + $difficPoint + $terrainPoints);
@@ -282,7 +288,7 @@ function isCacheCanditate($ptId, $cacheId)
 
 function addCacheToCacheCandidate($cacheId, $ptId)
 {
-    $linkCode = randomPassword(50);
+    $linkCode = TextGen::randomText(50);
 
     $db = OcDb::instance();
     $db->multiVariableQuery(
@@ -295,14 +301,4 @@ function addCacheToCacheCandidate($cacheId, $ptId)
     exit;
 }
 
-function randomPassword($passLenght)
-{
-    $alphabet = "abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ0123456789";
-    $pass = array();
-    $alphaLength = strlen($alphabet) - 1;
-    for ($i = 0; $i < $passLenght; $i++) {
-        $n = rand(0, $alphaLength);
-        $pass[] = $alphabet[$n];
-    }
-    return implode($pass); //turn the array into a string
-}
+

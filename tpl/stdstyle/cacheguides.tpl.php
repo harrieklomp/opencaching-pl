@@ -1,15 +1,13 @@
-<?php
 
-?>
-<script type="text/javascript">
+<script>
     var map0 = null;
     var currentinfowindow = null;
     var icon1 = {url: "tpl/stdstyle/images/google_maps/guru.png"};
 
-    function addMarker(lat, lon, userid, username, nrec) {
+    function addMarker(lat, lon, userid, username, nrec, mailurl) {
         var marker = new google.maps.Marker({position: new google.maps.LatLng(lat, lon), icon: icon1, map: map0});
         var infowindow = new google.maps.InfoWindow({
-            content: '<span style="color:blue;"><table><tr><td><img src="tpl/stdstyle/images/free_icons/vcard.png" alt="img"><b>&nbsp;<a class="links" href="viewprofile.php?userid=' + userid + '">' + username + '</a></td></tr><tr><td><b><img src="images/rating-star.png" alt="rekomendacje" title="rekomendacje"><b>&nbsp;' + nrec + ' {{guru_15}}</td></tr><tr><td><img src="tpl/stdstyle/images/free_icons/email.png" alt="img"><b>&nbsp;<a class="links" href="mailto.php?userid=' + userid + '">{{guru_16}}</a></b></td></tr></table></span>'
+            content: '<span style="color:blue;"><table><tr><td><img src="tpl/stdstyle/images/free_icons/vcard.png" alt="img"><b>&nbsp;<a class="links" href="viewprofile.php?userid=' + userid + '">' + username + '</a></td></tr><tr><td><b><img src="images/rating-star.png" alt="rekomendacje" title="rekomendacje"><b>&nbsp;' + nrec + ' {{guru_15}}</td></tr><tr><td><img src="tpl/stdstyle/images/free_icons/email.png" alt="img"><b>&nbsp;<a class="links" href="' + mailurl + '">{{guru_16}}</a></b></td></tr></table></span>'
         });
         google.maps.event.addListener(marker, "click", function () {
             if (currentinfowindow !== null) {
@@ -23,14 +21,12 @@
     function initialize() {
 
         map0 = new google.maps.Map(
-                document.getElementById("map0"),
-        {
-        center: new google.maps.LatLng({mapcenterLat}, {mapcenterLon}),
-                zoom: {mapzoom}
-        ,
-                mapTypeId: google.maps.MapTypeId.ROADMAP
-        }
-        );
+                document.getElementById("map0"),{
+                  center: new google.maps.LatLng({mapcenterLat}, {mapcenterLon}),
+                  zoom: {mapzoom},
+                  gestureHandling: 'greedy', //disable ctrl+ zooming
+                  mapTypeId: google.maps.MapTypeId.ROADMAP
+                });
         {points}
 
     }
@@ -58,7 +54,7 @@
                 <center>
                     <div id="map0" style="width:100%; height:500px"></div>
                 </center>
-                <br/>&nbsp;&nbsp;&nbsp;&nbsp;<img src="images/rating-star.png" alt="rekomendacje" title="rekomendacje"><b>&nbsp{{guru_09}}</b><br/>
+                <br/>&nbsp;&nbsp;&nbsp;&nbsp;<img src="images/rating-star.png" alt="rekomendacje" title="rekomendacje"><b>&nbsp;{{guru_09}}</b><br/>
             </div>
             <div class="searchdiv">
                 <span class="content-title-noshade" style="width: 600px;margin: 10px;line-height: 1.6em;font-size: 12px;">{{guru_10}}

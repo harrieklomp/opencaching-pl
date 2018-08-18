@@ -1,6 +1,7 @@
 <?php
 
 use Utils\Database\XDb;
+use lib\Objects\User\PasswordManager;
 
 require_once('../lib/ClassPathDictionary.php');
 
@@ -18,7 +19,7 @@ class login
     function login()
     {
         global $cookie;
-        
+
         if ($cookie->is_set('username') && $cookie->is_set('userid') && $cookie->is_set('lastlogin') && $cookie->is_set('sessionid')) {
 
             $this->username = XDb::xEscape($cookie->get('username'));
@@ -81,7 +82,7 @@ class login
     {
         $this->pClear();
 
-        
+
 
         $query = "select user_id,username from user where username = '" . XDb::xEscape($user) . "';";
         $wynik = XDb::xSql($query);
@@ -91,8 +92,7 @@ class login
         if ($user_id) {
             /* User exists. Is the password correct? */
 
-            $pm = new PasswordManager($user_id);
-            if (!$pm->verify($password)) {
+            if(PasswordManager::verifyPassword($user_id, $password)){
                 $user_id = null;
             }
         }

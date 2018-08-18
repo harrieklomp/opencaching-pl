@@ -8,10 +8,15 @@ use Utils\Database\OcDb;
 
 final class ApplicationContainer
 {
-
+    /** @var ApplicationContainer */
     private static $applicationContainer = null;
 
+    /** ocNode identifier loaded form local site-settings: pl|ro|nl|uk|... */
+    private $ocNode = null;
+
+    /** @var User */
     private $loggedUser = null;
+
     private $ocConfig;
 
     public $db;
@@ -43,11 +48,32 @@ final class ApplicationContainer
         return $this->loggedUser;
     }
 
+    public static function GetAuthorizedUser(){
+        return self::Instance()->getLoggedUser();
+    }
+
     public function setLoggedUser(User $loggedUser)
     {
         $this->loggedUser = $loggedUser;
         return $this;
     }
+
+    public static function SetAuthorizedUser(User $loggedUser=null)
+    {
+        self::Instance()->loggedUser = $loggedUser;
+    }
+
+
+    public static function GetOcNode()
+    {
+        return self::Instance()->ocNode;
+    }
+
+    public static function SetOcNode($ocNode)
+    {
+        self::Instance()->ocNode = $ocNode;
+    }
+
 
     /**
      *
@@ -59,5 +85,9 @@ final class ApplicationContainer
     }
 
 
+    public function getLang()
+    {
+        return $GLOBALS['lang'];
+    }
 }
 

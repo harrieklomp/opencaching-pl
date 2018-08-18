@@ -1,14 +1,16 @@
 <?php
 
-global $user_id;
+use Utils\Uri\SimpleRouter;
+use Utils\Uri\Uri;
+
 ?>
 
-<link rel="stylesheet" type="text/css" media="screen,projection" href="tpl/stdstyle/css/Badge.css" />
-<link rel="stylesheet" href="tpl/stdstyle/js/PieProgress/dist/css/asPieProgress.css">
-<script type="text/javascript" src="tpl/stdstyle/js/PieProgress/js/jquery.js"></script>
-<script type="text/javascript" src="tpl/stdstyle/js/PieProgress/dist/jquery-asPieProgress.js"></script>
+<link rel="stylesheet" type="text/css" media="screen,projection" href="/tpl/stdstyle/css/Badge.css">
+<link rel="stylesheet" href="/tpl/stdstyle/js/PieProgress/dist/css/asPieProgress.css">
+<script src="/tpl/stdstyle/js/PieProgress/js/jquery.js"></script>
+<script src="/tpl/stdstyle/js/PieProgress/dist/jquery-asPieProgress.js"></script>
 
-<script type="text/javascript">
+<script>
 jQuery(function($) {
   $('.Badge-pie-progress-small').asPieProgress({
     namespace: 'pie_progress'
@@ -20,13 +22,8 @@ jQuery(function($) {
 
 </script>
 
-<script type="text/javascript" src="lib/js/wz_tooltip.js"></script>
-<script src="tpl/stdstyle/js/jquery-2.0.3.min.js"></script>
-<script type="text/javascript">
-
-
-      
-      
+<script src="lib/js/wz_tooltip.js"></script>
+<script>
 
     function ajaxGetFTF() {
         $('#showFtfBtn').hide();
@@ -67,42 +64,45 @@ jQuery(function($) {
 </style>
 <!--    CONTENT -->
 <div class="content2-container">
-    <div class="content2-pagetitle"><img src="tpl/stdstyle/images/blue/profile.png" class="icon32" alt="{title_text}" title="{title_text}" />&nbsp;{{user_profile}}: {username} </div>
+  <?php $view->callChunk('infoBar', '', $view->infoMsg, $view->errorMsg ); ?>
+    <div class="content2-pagetitle">{{user_profile}} {username} </div>
     <div class="content-title-noshade">
         <table border="0" cellspacing="2" cellpadding="1" style="margin-left: 10px;font-size: 115%;" width="97%">
             <tr>
                 <td rowspan="3" width="64"><img src="tpl/stdstyle/images/blue/{profile_img}.png"  alt="" title="{profile_info}" align="middle"/></td>
-                <td><span class="txt-blue08" >{{registered_since_label}}:</span> <span class="txt-black"> {registered}</span><br /><br/><span class="txt-blue08" >{{country_label}}:</span><span class="txt-black"> {country}</span></td>
+                <td><span class="txt-blue08" >{{registered_since_label}}:</span> <span class="txt-black"> {registered}</span><br></td>
                 <td rowspan="3" width="30%">
-                    <img src="tpl/stdstyle/images/blue/email.png" class="icon32" alt="Email" title="Email" align="middle"/>&nbsp;<a href="mailto.php?userid={userid}">{{email_user}}</a><br />
-                    <img src="tpl/stdstyle/images/blue/world.png" class="icon32" alt="Mapa" title="Map" align="middle"/>&nbsp;<a href="cachemap3.php?userid={userid}">{{show_user_map}}</a>
+                    <img src="tpl/stdstyle/images/blue/email.png" class="icon32" alt="Email" title="Email" align="middle">&nbsp;<a href="<?=SimpleRouter::getLink('UserProfile', 'mailTo', $view->userid)?>" class="links">{{email_user}}</a><br />
+                    <img src="tpl/stdstyle/images/blue/world.png" class="icon32" alt="Mapa" title="Map" align="middle">&nbsp;<a href="<?=Uri::setOrReplaceParamValue('userid', $view->userid, SimpleRouter::getLink('CacheMap', 'embeded'))?>" class="links">{{show_user_map}}</a>
                 </td>
             </tr>
             <tr>
                 <td><span class="txt-blue08" >{{descriptions}}:</span><span class="txt-black" style="line-height: 0.5cm;"> {description_start}{description}{description_end}</span></td>
             </tr>
             <tr>
-                <td><span class="txt-blue08" >{{lastlogins}}:</span><span class="txt-black" style="line-height: 0.5cm;"> {lastlogin}</span></td>
+                <td><span class="txt-blue08" >{{lastlogins}}:</span><span class="{lastloginClass}" style="line-height: 0.5cm;"> {lastlogin}</span></td>
             </tr>
             <tr>
-                <td colspan="3"><hr></hr></td>
-            </tr></table>
+                <td colspan="3"><hr></td>
+            </tr>
+        </table>
     </div>
     {guide_info}
     <div class="nav4">
-        <?php
-// statlisting
-        $statidx = mnu_MainMenuIndexFromPageId($menu, "statlisting");
-        if ($menu[$statidx]['title'] != '') {
-            echo '<ul id="statmenu">';
-            $menu[$statidx]['visible'] = false;
-            echo '<li class="title" ';
-            echo '>' . $menu[$statidx]["title"] . '</li>';
-            mnu_EchoSubMenu($menu[$statidx]['submenu'], $tplname, 1, false);
-            echo '</ul>';
-        }
-//end statlisting
-        ?>
+        <ul id="statmenu">
+          <li class="group">
+            <a style="background-image: url(images/actions/stat-18.png);background-repeat:no-repeat;"
+               href="/ustatsg2.php?userid=<?=$view->userid?>">
+              <?=tr('graph_find')?>
+            </a>
+          </li>
+          <li class="group">
+            <a style="background-image: url(images/actions/stat-18.png);background-repeat:no-repeat;"
+               href="/ustatsg1.php?userid=<?=$view->userid?>">
+              <?=tr('graph_created')?>
+            </a>
+          </li>
+        </ul>
     </div>
 
     {content}

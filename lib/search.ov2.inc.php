@@ -3,10 +3,14 @@
  * This script is used (can be loaded) by /search.php
  */
 
+ob_start();
+
 use Utils\Database\XDb;
 global $content, $bUseZip, $hide_coords, $usr, $dbcSearch;
 
 set_time_limit(1800);
+
+require_once ('lib/calculation.inc.php');
 
 $cacheTypeText[1] = 'Unknown Cache';
 $cacheTypeText[2] = 'Traditional Cache';
@@ -14,9 +18,10 @@ $cacheTypeText[3] = 'Multi-Cache';
 $cacheTypeText[4] = 'Virtual Cache';
 $cacheTypeText[5] = 'Webcam Cache';
 $cacheTypeText[6] = 'Event Cache';
-$cacheTypeText[7] = 'Quiz';
+$cacheTypeText[7] = 'Puzzle';
 $cacheTypeText[8] = 'Moving Cache';
-$cacheTypeText[9] = 'PodCastCache';
+$cacheTypeText[9] = 'Podcast';
+$cacheTypeText[10] = 'Own Cache';
 
 if ($usr || ! $hide_coords) {
     // prepare the output
@@ -58,7 +63,7 @@ if ($usr || ! $hide_coords) {
                     FROM `caches` ';
     } else {
         $query .= ' IFNULL(`cache_mod_cords`.`longitude`, `caches`.`longitude`) `longitude`, IFNULL(`cache_mod_cords`.`latitude`,
-                            `caches`.`latitude`) `latitude`, IFNULL(cache_mod_cords.id,0) as cache_mod_cords_id FROM `caches`
+                            `caches`.`latitude`) `latitude`, IFNULL(cache_mod_cords.latitude,0) as cache_mod_cords_id FROM `caches`
                         LEFT JOIN `cache_mod_cords` ON `caches`.`cache_id` = `cache_mod_cords`.`cache_id` AND `cache_mod_cords`.`user_id` = ' . $usr['userid'];
     }
 
@@ -98,7 +103,7 @@ if ($usr || ! $hide_coords) {
 
     $queryLimit = ' LIMIT ' . $startat . ', ' . $count;
 
-    // temporĂ¤re tabelle erstellen
+    // create temporary table
     $dbcSearch->simpleQuery('CREATE TEMPORARY TABLE `ov2content` ' . $query . $queryLimit);
 
     $s = $dbcSearch->simpleQuery('SELECT COUNT(*) `count` FROM `ov2content`');
@@ -121,10 +126,10 @@ if ($usr || ! $hide_coords) {
             $rName = XDb::xFetchArray($rsName);
             XDb::xFreeResults($rsName);
             if (isset($rName['name']) && ($rName['name'] != '')) {
-                $sFilebasename = trim($rName['name']);
+                $sFilebasename = trim(convert_string($rName['name']));
                 $sFilebasename = str_replace(" ", "_", $sFilebasename);
             } else {
-                $sFilebasename = 'ocpl' . $options['queryid'];
+                $sFilebasename = 'search' . $options['queryid'];
             }
         }
     }
@@ -136,14 +141,6 @@ if ($usr || ! $hide_coords) {
         $content = '';
         require_once ($rootpath . 'lib/phpzip/ss_zip.class.php');
         $phpzip = new ss_zip('', 6);
-    }
-
-    if ($bUseZip == true) {
-        header("content-type: application/zip");
-        header('Content-Disposition: attachment; filename=' . $sFilebasename . '.zip');
-    } else {
-        header("Content-type: application/ov2");
-        header("Content-Disposition: attachment; filename=" . $sFilebasename . ".ov2");
     }
 
     $query = 'SELECT `ov2content`.`cache_id` `cacheid`, `ov2content`.`longitude` `longitude`, `ov2content`.`latitude` `latitude`, `ov2content`.cache_mod_cords_id, `caches`.`date_hidden` `date_hidden`, `caches`.`name` `name`, `caches`.`wp_oc` `wp_oc`, `cache_type`.`short` `typedesc`, `cache_size`.`pl` `sizedesc`, `caches`.`terrain` `terrain`, `caches`.`difficulty` `difficulty`, `user`.`username` `username`, `cache_type`.`id` `type_id` FROM `ov2content`, `caches`, `cache_type`, `cache_size`, `user` WHERE `ov2content`.`cache_id`=`caches`.`cache_id` AND `ov2content`.`type`=`cache_type`.`id` AND `ov2content`.`size`=`cache_size`.`id` AND `ov2content`.`user_id`=`user`.`user_id`';
@@ -171,34 +168,26 @@ if ($usr || ! $hide_coords) {
         $line = "$cacheid - $name by $username, $type ($difficulty/$terrain)";
         $record = pack("CLllA*x", 2, 1 + 4 + 4 + 4 + strlen($line) + 1, (int) $lon, (int) $lat, $line);
 
-        append_output($record);
-        ob_flush();
+        echo $record;
+        // DO NOT USE HERE:
+        // ob_flush();
     }
 
-    // phpzip versenden
+    // compress using phpzip
     if ($bUseZip == true) {
+        $content = ob_get_clean();
         $phpzip->add_data($sFilebasename . '.ov2', $content);
-        echo $phpzip->save($sFilebasename . '.zip', 'b');
+        $out = $phpzip->save($sFilebasename . '.zip', 'b');
+
+        header("content-type: application/zip");
+        header('Content-Disposition: attachment; filename=' . $sFilebasename . '.zip');
+        echo $out;
+        ob_end_flush();
+    } else {
+        header("Content-type: application/ov2");
+        header("Content-Disposition: attachment; filename=" . $sFilebasename . ".ov2");
+        ob_end_flush();
     }
 }
+
 exit();
-
-function convert_string($str)
-{
-    $newstr = iconv("UTF-8", "utf-8", $str);
-    if ($newstr == false)
-        return "--- charset error ---";
-    else
-        return $newstr;
-}
-
-function append_output($str)
-    {
-        global $content, $bUseZip;
-
-        if ($bUseZip == true)
-            $content .= $str;
-        else
-            echo $str;
-    }
-

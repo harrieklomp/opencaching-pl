@@ -4,7 +4,7 @@
  */
 
 use Utils\Database\XDb;
-use Utils\Gis;
+use Utils\Gis\Gis;
 
 /*
  *
@@ -28,10 +28,14 @@ use Utils\Gis;
  *
  */
 $rootpath = '../../';
+
 require_once ($rootpath . 'lib/common.inc.php');
 
 global $lang;
 
+
+// select caches which don't have cache_location record
+// OR modification time is later cache location mod.time
 $rsCache = XDb::xSql(
     "SELECT `caches`.`cache_id`, `caches`.`latitude`, `caches`.`longitude`
     FROM `caches`
@@ -100,7 +104,7 @@ while ($rCache = XDb::xFetchArray($rsCache)) {
         if (mb_strlen($sCode) == 2) {
             $code1 = $sCode;
 
-            if (checkField('countries', 'list_default_' . $lang))
+            if (XDb::xContainsColumn('countries', 'list_default_' . $lang))
                 $lang_db = $lang;
             else
                 $lang_db = "en";
@@ -125,7 +129,7 @@ while ($rCache = XDb::xFetchArray($rsCache)) {
             $adm1, $adm2, $adm3, $adm4, $code1, $code2, $code3, $code4);
 
     } else {
-        if (checkField('countries', 'list_default_' . $lang))
+        if (XDb::xContainsColumn('countries', 'list_default_' . $lang))
             $lang_db = $lang;
         else
             $lang_db = "en";

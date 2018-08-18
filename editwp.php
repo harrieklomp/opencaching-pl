@@ -92,7 +92,7 @@ if ($error == false) {
                     tpl_set_var('openchecker_display', 'none');
                     tpl_set_var('openchecker_start','<!--');
                     tpl_set_var('openchecker_end','-->');
-                }    
+                }
                 // checks checkbox if in database is checked.
                 if ($wp_record['opensprawdzacz'] == 1) {
                     tpl_set_var('openchecker_checked', 'checked=""');
@@ -207,7 +207,7 @@ if ($error == false) {
                 if (isset($_POST['submit'])) {
                     //all validations ok?
                     //check the entered data
-                    if ($wp_type == '4' || $wp_type == '5')
+                    if ($wp_type == '4' || $wp_type == '5' || $wp_type == '6')
                         $wp_stage = '0';
                     if (!($lat_not_ok || $lon_not_ok || $descwp_not_ok)) {
                         $wp_lat = $coords_lat_h + $coords_lat_min / 60;

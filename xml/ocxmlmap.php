@@ -1,7 +1,7 @@
 <?php
 
 use Utils\Database\XDb;
-require('../lib/settings.inc.php');
+require('../lib/settingsGlue.inc.php');
 
 /* begin with some constants */
 $t1 = "\t";
@@ -195,7 +195,6 @@ if ((($nPrimary == 0) && ($bUsers == 1)) || ($nPrimary == 4)) {
 
 
 /* begin output */
-// ausgeben
 header("Content-type: application/xml");
 
 if ($bXmlDecl == '1')

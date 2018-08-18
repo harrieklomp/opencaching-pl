@@ -2,25 +2,28 @@
 
 use Utils\Database\OcDb;
 use Utils\Uri\Uri;
-use lib\Controllers\LogEnteryController;
-
-
+use lib\Controllers\LogEntryController;
+use Utils\Text\TextConverter;
+use Utils\Text\SmilesInText;
+use Utils\Text\UserInputFilter;
 
 //prepare the templates and include all neccessary
 if (!isset($rootpath))
     $rootpath = '';
+
 require_once('./lib/common.inc.php');
 if ($error == false) {
 //Preprocessing
     //set here the template to process
     $tplname = 'viewlogs';
 
+    $view = tpl_getView();
+    $view->loadFancyBox();
 
     tpl_set_var('viewcache_js', Uri::getLinkWithModificationTime("tpl/stdstyle/viewcache/viewcache.js"));
     require($stylepath . '/lib/icons.inc.php');
     require($stylepath . '/viewcache.inc.php');
     require($stylepath . '/viewlogs.inc.php');
-    require($stylepath . '/smilies.inc.php');
     global $usr;
 
     $cache_id = 0;
@@ -181,12 +184,12 @@ if ($error == false) {
         }
 
         $logs = '';
-        $thisdateformat = $dateformat;
-        $logEnteryController = new LogEnteryController();
+
+        $logEntryController = new LogEntryController();
         if($logid){ /* load and display one log only */
-            $logEneries = $logEnteryController->loadLogsFromDb($cache_id, $includeDeletedLogs, 0, 1, $logid);
+            $logEneries = $logEntryController->loadLogsFromDb($cache_id, $includeDeletedLogs, 0, 1, $logid);
         } else {
-            $logEneries = $logEnteryController->loadLogsFromDb($cache_id, $includeDeletedLogs, 0, 9999);
+            $logEneries = $logEntryController->loadLogsFromDb($cache_id, $includeDeletedLogs, 0, 9999);
         }
         foreach ($logEneries as $record) {
             $record['text_listing'] = ucfirst(tr('logType' . $record['type'])); //add new attrib 'text_listing based on translation (instead of query as before)'
@@ -202,7 +205,8 @@ if ($error == false) {
                         $processed_text .= " " . tr('vl_by_user') . " " . $record['del_by_username'];
                     }
                     if (isset($record['last_deleted'])) {
-                        $processed_text .=" " . tr('vl_on_date') . " " . fixPlMonth(htmlspecialchars(strftime($thisdateformat, strtotime($record['last_deleted'])), ENT_COMPAT, 'UTF-8'));
+                        $processed_text .=" " . tr('vl_on_date') . " " . TextConverter::fixPlMonth(htmlspecialchars(strftime(
+                            $GLOBALS['config']['dateformat'], strtotime($record['last_deleted'])), ENT_COMPAT, 'UTF-8'));
                     }
                     $processed_text .= "]";
                 } else {
@@ -236,7 +240,8 @@ if ($error == false) {
                         }
                     }
                     if (isset($record['last_deleted'])) {
-                        $comm_replace.=" " . tr('vl_on_date') . " " . fixPlMonth(htmlspecialchars(strftime($thisdateformat, strtotime($record['last_deleted'])), ENT_COMPAT, 'UTF-8'));
+                        $comm_replace.=" " . tr('vl_on_date') . " " . TextConverter::fixPlMonth(htmlspecialchars(strftime(
+                            $GLOBALS['config']['dateformat'], strtotime($record['last_deleted'])), ENT_COMPAT, 'UTF-8'));
                     }
                     $comm_replace.=".";
                     $processed_text = $comm_replace;
@@ -250,7 +255,8 @@ if ($error == false) {
 
             if ($record['edit_count'] > 0) {
                 //check if editted at all
-                $edit_footer = "<div><small>" . tr('vl_Recently_modified_on') . " " . fixPlMonth(htmlspecialchars(strftime($datetimeformat, strtotime($record['last_modified'])), ENT_COMPAT, 'UTF-8'));
+                $edit_footer = "<div><small>" . tr('vl_Recently_modified_on') . " " . TextConverter::fixPlMonth(htmlspecialchars(
+                    strftime($GLOBALS['config']['datetimeformat'], strtotime($record['last_modified'])), ENT_COMPAT, 'UTF-8'));
                 if (!$usr['admin'] && $record['edit_by_admin'] == true && $record['type'] == 12) {
                     $edit_footer.=" " . tr('vl_by_COG');
                 } else {
@@ -274,8 +280,7 @@ if ($error == false) {
             $tmplog = file_get_contents($stylepath . '/viewcache_log.tpl.php');
 //END: same code ->viewlogs.php / viewcache.php
             $tmplog_username = htmlspecialchars($record['username'], ENT_COMPAT, 'UTF-8');
-            $tmplog_date = fixPlMonth(htmlspecialchars(strftime($dateformat, strtotime($record['date'])), ENT_COMPAT, 'UTF-8'));
-            // replace smilies in log-text with images
+            $tmplog_date = TextConverter::fixPlMonth(htmlspecialchars(strftime($GLOBALS['config']['dateformat'], strtotime($record['date'])), ENT_COMPAT, 'UTF-8'));
 
             $dateTimeTmpArray = explode(' ', $record['date']);
             $tmplog = mb_ereg_replace('{time}', substr($dateTimeTmpArray[1], 0, -3), $tmplog);
@@ -297,19 +302,19 @@ if ($error == false) {
             $tmplog = mb_ereg_replace('{username_aktywnosc}', $tmplog_username_aktywnosc, $tmplog);
 
             // mobile caches by Łza
-            if (($record['type'] == 4) && ($record['mobile_latitude'] != 0)) {
+            if (($record['type'] == 4) && ($record['mobile_latitude'] != 0) && ! $disable_spoiler_view) {
                 $tmplog_kordy_mobilnej = mb_ereg_replace(" ", "&nbsp;", htmlspecialchars(help_latToDegreeStr($record['mobile_latitude']), ENT_COMPAT, 'UTF-8')) . '&nbsp;' . mb_ereg_replace(" ", "&nbsp;", htmlspecialchars(help_lonToDegreeStr($record['mobile_longitude']), ENT_COMPAT, 'UTF-8'));
-                $tmplog = mb_ereg_replace('{kordy_mobilniaka}', $record['km'] . ' km [<img src="tpl/stdstyle/images/blue/szczalka_mobile.png" title="' . tr('viewlog_kordy') . '" />' . $tmplog_kordy_mobilnej . ']', $tmplog);
+                $tmplog = mb_ereg_replace('{kordy_mobilniaka}', $record['km'] . ' km [<img src="tpl/stdstyle/images/blue/arrow_mobile.png" title="' . tr('viewlog_kordy') . '" />' . $tmplog_kordy_mobilnej . ']', $tmplog);
             } else
                 $tmplog = mb_ereg_replace('{kordy_mobilniaka}', ' ', $tmplog);
 
             if ($record['text_html'] == 0) {
                 $processed_text = htmlspecialchars($processed_text, ENT_COMPAT, 'UTF-8');
-                $processed_text = help_addHyperlinkToURL($processed_text);
+                $processed_text = TextConverter::addHyperlinkToURL($processed_text);
             } else {
-                $processed_text = userInputFilter::purifyHtmlStringAndDecodeHtmlSpecialChars($processed_text);
+                $processed_text = UserInputFilter::purifyHtmlStringAndDecodeHtmlSpecialChars($processed_text, $record['text_html']);
             }
-            $processed_text = str_replace($smileytext, $smileyimage, $processed_text);
+            $processed_text = SmilesInText::process($processed_text);
 
             $tmplog_text = $processed_text . $edit_footer;
 
@@ -359,7 +364,6 @@ if ($error == false) {
             if (($record['picturescount'] > 0) && (($record['deleted'] == false) || ($usr['admin']))) { // show pictures if (any added) and ((not deleted) or (user is admin))
                 //END: edit by FelixP - 2013'10
                 $logpicturelines = '';
-                $append_atag = '';
                 if (!isset($dbc)) {
                     $dbc = OcDb::instance();
                 }
@@ -374,11 +378,9 @@ if ($error == false) {
                     $thisline = $logpictureline;
 
                     if ($disable_spoiler_view && intval($pic_record['spoiler']) == 1) {  // if hide spoiler (due to user not logged in) option is on prevent viewing pic link and show alert
-                        $thisline = mb_ereg_replace('{log_picture_onclick}', "alert('" . $spoiler_disable_msg . "'); return false;", $thisline);
                         $thisline = mb_ereg_replace('{link}', 'index.php', $thisline);
                         $thisline = mb_ereg_replace('{longdesc}', 'index.php', $thisline);
                     } else {
-                        $thisline = mb_ereg_replace('{log_picture_onclick}', "enlarge(this)", $thisline);
                         $thisline = mb_ereg_replace('{link}', $pic_record['url'], $thisline);
                         $thisline = mb_ereg_replace('{longdesc}', str_replace("images/uploads", "upload", $pic_record['url']), $thisline);
                     }

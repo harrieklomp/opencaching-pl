@@ -40,11 +40,11 @@ if ($error == false) {
         }
 
         if ($allok == true) {
-            //ok, wir haben eine gĂźltige uuid und sind der owner ...
+            // ok, we have a valid uuid and are the owner ...
             $fna = mb_split('\\.', $url);
             $extension = mb_strtolower($fna[count($fna) - 1]);
 
-            // datei und in DB lĂśschen
+            // remove file and DB entry
             @unlink($picdir . '/' . $uuid . '.' . $extension);
             XDb::xSql("DELETE FROM `mp3` WHERE `uuid`= ? LIMIT 1", $uuid);
             XDb::xSql(
@@ -58,9 +58,9 @@ if ($error == false) {
                     XDb::xSql("UPDATE `cache_logs` SET `mp3count`=`mp3count`-1 WHERE `id`= ? ", $objectid);
 
                     $rs = XDb::xSql(
-                        "SELECT `cache_id` FROM `cache_logs`, `last_modified`=NOW() 
+                        "SELECT `cache_id` FROM `cache_logs`, `last_modified`=NOW()
                         WHERE `deleted`=0 AND `id`= ? ", $objectid);
-                        
+
                     $r = XDb::xFetchArray($rs);
                     XDb::xFreeResults($rs);
 
@@ -70,7 +70,7 @@ if ($error == false) {
                 // cache
                 case 2:
                     XDb::xSql(
-                        "UPDATE `caches` SET `mp3count`=`mp3count`-1, `last_modified`=NOW() 
+                        "UPDATE `caches` SET `mp3count`=`mp3count`-1, `last_modified`=NOW()
                         WHERE `cache_id`= ? ", $objectid);
 
                     tpl_redirect('editcache.php?cacheid=' . urlencode($objectid));

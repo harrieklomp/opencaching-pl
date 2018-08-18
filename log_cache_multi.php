@@ -79,7 +79,7 @@ if (isset($_POST['submitDownloadGpx'])) {
         $filname = date("Ymd-Hi") . ".gpx";
         header("Content-type: application/x-download");
         header("Content-type: text/plain; charset=utf-8");
-        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+        header('Cache-Control: no-cache');
 
 //      header("Content-type: application/octet-stream");
         header("Content-Disposition: attachment; filename=\"" . $filname . "\"");
@@ -99,7 +99,6 @@ if ($usr == false || (!isset($_FILES['userfile']) && !isset($_SESSION['log_cache
     tpl_redirect('log_cache_multi_send.php');
 } else {
     require_once($rootpath . 'lib/caches.inc.php');
-    require($stylepath . '/log_cache.inc.php');
 
     $tplname = 'log_cache_multi';
     $myHtml = "";
@@ -345,7 +344,7 @@ if ($usr == false || (!isset($_FILES['userfile']) && !isset($_SESSION['log_cache
 
 if ($no_tpl_build == false) {
     //make the template and send it out
-    tpl_BuildTemplate(false);
+    tpl_BuildTemplate();
 }
 
 function UstawDatyZTimeStampa($rekord)

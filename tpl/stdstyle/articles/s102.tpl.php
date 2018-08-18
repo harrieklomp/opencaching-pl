@@ -1,29 +1,21 @@
-<!-- <script src="tpl/stdstyle/js/jquery-2.0.3.min.js"></script>
-<link rel="stylesheet" href="tpl/stdstyle/js/jquery_1.9.2_ocTheme/themes/cupertino/jquery.ui.all.css">
-<script src="tpl/stdstyle/js/jquery_1.9.2_ocTheme/ui/minified/jquery-ui.min.js"></script>
-<script src="tpl/stdstyle/js/jquery_1.9.2_ocTheme/ui/jquery.datepick-{language4js}.js"></script> -->
-
-
-<link href="tpl/stdstyle/js/jquery.1.10.3/css/myCupertino/jquery-ui-1.10.3.custom.css" rel="stylesheet">
-<script src="tpl/stdstyle/js/jquery.1.10.3/js/jquery-1.9.1.js"></script>
-<script src="tpl/stdstyle/js/jquery.1.10.3/js/jquery-ui-1.10.3.custom.js"></script>
-<script src="tpl/stdstyle/js/jquery.1.10.3/development-bundle/ui/jquery.datepick-{language4js}.js"></script>
-
+<?php
+use Utils\Uri\OcCookie;
+?>
 <link rel="stylesheet" type="text/css" media="screen,projection" href="tpl/stdstyle/css/GCT.css" />
 <link rel="stylesheet" type="text/css" media="screen,projection" href="tpl/stdstyle/css/GCTStats.css" />
-<script type='text/javascript' src='https://www.google.com/jsapi'></script>
-<script type='text/javascript' src="lib/js/GCT.js"></script>
-<script type="text/javascript" src="lib/js/GCT.lang.php"></script>
-<script type='text/javascript' src="lib/js/GCTStats.js"></script>
-<script type='text/javascript' src="lib/js/wz_tooltip.js"></script>
+<script src='https://www.google.com/jsapi'></script>
+<script src="lib/js/GCT.js"></script>
+<script src="lib/js/GCT.lang.php"></script>
+<script src="lib/js/GCTStats.js"></script>
+<script src="lib/js/wz_tooltip.js"></script>
 
-
-
+<script>
+  $( function() {
+    $.datepicker.setDefaults($.datepicker.regional["<?=$GLOBALS['lang']?>"]);
+  } );
+</script>
 
 <?php
-//require_once('./lib/common.inc.php');
-
-
 $sNameOfStat = "";
 $sTitleOfStat = "";
 if (isset($_REQUEST["stat"])) {
@@ -38,33 +30,15 @@ else
     $sTitleOfStat = " Ranking ";
 ?>
 
-<table class="content" width="97%">
-    <tr><td class="content2-pagetitle"><img src="tpl/stdstyle/images/blue/stat1.png" class="icon32" alt="{{stats}}" title="{{stats}} <?php echo $sTitleOfStat ?>" align="middle" /><font size="4">  <b>{{statistics}}: <?php echo $sTitleOfStat ?></b></font></td></tr>
-    <tr><td class="spacer"></td></tr>
-</table>
-
-<script type="text/javascript">
-TimeTrack("START");
-</script>
-
-<script type="text/javascript" src="lib/js/wz_tooltip.js"></script>
-
-<?php
-global $debug_page;
-//if ( $debug_page )
-//  echo "<script type='text/javascript'>TimeTrack( 'DEBUG' );</script>";
-?>
-
-<!-- {{StatTestVer}}<br>
-{{PrevVersion}} -->
-
-
+<div class="content2-container">
+  <div class="content2-pagetitle">
+    <img src="tpl/stdstyle/images/blue/stat1.png" class="icon32" alt="">
+    {{statistics}}: <?php echo $sTitleOfStat ?>
+  </div>
 
 <div class="searchdiv">
 
-
     <?php
-    global $cookie;
 
     $sRok = "";
     $sMc = "";
@@ -76,7 +50,7 @@ global $debug_page;
     $sIsEmptDate = "";
 
     if (isset($_REQUEST["init"])) {
-        $sIsEmptDate = $cookie->get($sNameOfStatCookieEmptyDate);
+        $sIsEmptDate = OcCookie::get($sNameOfStatCookieEmptyDate);
     }
 
 
@@ -90,12 +64,12 @@ global $debug_page;
         $sRD = $_REQUEST["rRD"];
 
 
-        if ($sRD == "R" && $sRok == "" && $sMc == "")
-            $cookie->set($sNameOfStatCookieEmptyDate, "Yes");
-        else
-            $cookie->set($sNameOfStatCookieEmptyDate, "No");
+        if ($sRD == "R" && $sRok == "" && $sMc == ""){
+            OcCookie::set($sNameOfStatCookieEmptyDate, "Yes", true);
+        }else{
+            OcCookie::set($sNameOfStatCookieEmptyDate, "No", true);
+        }
 
-        $cookie->header();
     }
 
     if (( isset($_REQUEST["init"]) or intval($sMc) > 12 or intval($sMc) < 0 or intval($sRok) < 0 )
@@ -114,7 +88,6 @@ global $debug_page;
         $_REQUEST["rRD"] = $sRD;
     }
     ?>
-
 
     <!-- content-title-noshade -->
     <div class="GCT-div" >
@@ -142,7 +115,7 @@ global $debug_page;
                                 <td><input type="radio" name="rRD" id="rD" value="D" <?php if ($sRD == "D") echo "checked" ?>></td>
                                 <td>{{Dates}}:</td>
                                 <td colspan=2>
-                                    <input type="text" id="datepicker" name="DataOd" onclick="GCTStatsSetRadio('Data')" value="<?php echo $sDataOd ?>" style="width:60px; text-align: left"  maxlength="10">&nbsp&nbsp-
+                                    <input type="text" id="datepicker" name="DataOd" onclick="GCTStatsSetRadio('Data')" value="<?php echo $sDataOd ?>" style="width:60px; text-align: left"  maxlength="10">&nbsp;&nbsp;-
                                     <input type="text" id="datepicker1" name="DataDo" onclick="GCTStatsSetRadio('Data')" value="<?php echo $sDataDo ?>" style="width:60px; text-align: left"  maxlength="10">
                                 </td>
                             </tr>
@@ -151,9 +124,6 @@ global $debug_page;
                     </form>
                 </td>
                 <!-- END of Filter -->
-
-                <!-- EMPTY -->
-                <!-- <td width="124px"> </td> -->
 
                 <!-- Begin of User -->
                 <td align="right">
@@ -183,7 +153,7 @@ global $debug_page;
 
 </div>
 
-<script type="text/javascript">
+<script>
     google.load('visualization', '1', {'packages': ['corechart'], 'language': '{language4js}'});
 </script>
 
@@ -199,8 +169,4 @@ global $debug_page;
     {{HelpHowToSelect}}
 </div>
 
-
-<script type="text/javascript">
-    TimeTrack("END", "S102");
-</script>
-
+</div>

@@ -12,4 +12,10 @@ class Year
         if ($dayOfYear >= 265 && $dayOfYear <= 330 ) return 'autumn';
         return 'winter';
     }
+
+    public static function isPrimaAprilisToday()
+    {
+        //return TRUE;
+        return (date('m') == 4) && ( date('d') == 1);
+    }
 }

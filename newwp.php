@@ -78,7 +78,7 @@ if ($error == false) {
 
                 //build typeoptions
                 $sel_type = isset($_POST['type']) ? $_POST['type'] : -1;
-                if (checkField('waypoint_type', $lang))
+                if (XDb::xContainsColumn('waypoint_type', $lang))
                     $lang_db = $lang;
                 else
                     $lang_db = "en";
@@ -153,13 +153,13 @@ if ($error == false) {
                 } else {
                     tpl_set_var('openchecker_start','<!--');
                     tpl_set_var('openchecker_end','-->');
-                }    
+                }
                 if (isset($_POST['openchecker'])) {
                     $OpenChecker_present = 1;
                     tpl_set_var('openchecker_checked', 'checked=""');
                 } else {
                     $OpenChecker_present = 0;
-                }    
+                }
                 // hides or shows openchecker checkbox depend on type of waypoint
                 if ($sel_type == 3 && $config['module']['openchecker']['enabled'])
                     tpl_set_var('openchecker_display', 'block');
@@ -200,7 +200,7 @@ if ($error == false) {
 
                 if (isset($_POST['submitform'])) {
                     //check the entered data
-                    if ($sel_type == '4' || $sel_type == '5')
+                    if ($sel_type == '4' || $sel_type == '5' || $sel_type == '6')
                         $wp_stage = 0;
                     //check coordinates
                     if ($lat_h != '' || $lat_min != '') {
@@ -326,9 +326,9 @@ if ($error == false) {
                         //add record
 
                         XDb::xSql("INSERT INTO `waypoints` (
-                                    `wp_id`, `cache_id`,`longitude`,`latitude`,`type` ,
+                                    `cache_id`,`longitude`,`latitude`,`type` ,
                                     `status` ,`stage` ,`desc` ,`opensprawdzacz`)
-                                   VALUES ('', ?, ?, ?, ?, ?, ?, ?, ?)",
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                                    $cache_id, $longitude, $latitude, $sel_type,
                                    $wp_status, $wp_stage, $wp_desc, $OpenChecker_present );
 
@@ -344,8 +344,8 @@ if ($error == false) {
                                 "SELECT COUNT(*) FROM `opensprawdzacz` WHERE `cache_id` = :1 ", 0, $cache_id);
 
                             if ($proba == 0) {
-                                XDb::xSql("INSERT INTO `opensprawdzacz`(`id`,  `cache_id`,  `proby`, `sukcesy`)
-                                                     VALUES ('', '$cache_id',   0,       0)");
+                                XDb::xSql("INSERT INTO `opensprawdzacz`(`cache_id`, `proby`, `sukcesy`)
+                                                     VALUES ('$cache_id', 0, 0)");
                             }
 
                         }
@@ -371,4 +371,3 @@ if ($no_tpl_build == false) {
     //make the template and send it out
     tpl_BuildTemplate();
 }
-

@@ -6,23 +6,15 @@ use lib\Objects\User\User;
 use lib\Objects\PowerTrail\PowerTrail;
 
 
-/*
+/**
  *
  * This is common code for mapv3
- * this is used by:
+ *
+ * This is used by:
  * -- /cachemap3.php
  * -- /cachemap-full.php
  * -- /cachemap-mini.php
  */
-function onTheList($theArray, $item)
-{
-    for ($i = 0; $i < count($theArray); $i ++) {
-        if ($theArray[$i] == $item) {
-            return $i;
-        }
-    }
-    return - 1;
-}
 
 /**
  * Reads user map settings from the DB
@@ -237,7 +229,7 @@ function parsePowerTrailFilter($loadDetails = false)
         if ($ptObj->isDataLoaded()) {
             tpl_set_var("pt_filter_enabled", '1', false);
             tpl_set_var("pt_url", $ptObj->getPowerTrailUrl());
-            tpl_set_var("pt_name", $ptObj->getName());
+            tpl_set_var("pt_name", htmlentities($ptObj->getName()));
             tpl_set_var("pt_icon", $ptObj->getFootIcon());
         } else {
             tpl_set_var("pt_filter_enabled", '0', false);
@@ -348,28 +340,23 @@ function setTheRestOfCommonVars()
 
     tpl_set_var('doopen', isset($_REQUEST['cacheid']) ? "true" : "false");
 
-    setCommonMap3Vars();
-}
-
-function setCommonMap3Vars()
-{
-    global $rootpath, $lang, $cachemap_mapper, $googlemap_key; // from global settings.inc.php
+    global $cachemap_mapper; // from global settings.inc.php
 
     tpl_set_var("cachemap_mapper", $cachemap_mapper);
-    /* SET YOUR MAP CODE HERE */
-    tpl_set_var('cachemap_header', '<script src="https://maps.googleapis.com/maps/api/js?v=3.27&amp;key=' . $googlemap_key . '&amp;language=' . $lang . '" '.
-        'type="text/javascript"></script>' .
+
+    tpl_set_var('cachemap_header',
         '<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">');
 
     /*
-     * Generate dynamic URL to cachemap3.js file, this will make sure it will be reloaded by the browser.
-     * The time-stamp will be stripped by a rewrite rule in lib/.htaccess.
+     * Generate dynamic URL to cachemap3.js file, this will make sure
+     * it will be reloaded by the browser.
      */
+    global $rootpath;
     $cacheMapVersion = filemtime($rootpath . 'lib/cachemap3.js') % 1000000;
-    $cacheMapVersion += filemtime($rootpath . 'lib/cachemap3.php') % 1000000;
-    $cacheMapVersion += filemtime($rootpath . 'lib/cachemap3lib.inc.php') % 1000000;
+    $cacheMapVersion += filemtime($rootpath . 'lib/cachemap3.js.php') % 1000000;
     $cacheMapVersion += filemtime($rootpath . 'lib/settings.inc.php') % 1000000;
-    tpl_set_var('lib_cachemap3_js', "lib/cachemap3." . $cacheMapVersion . ".js");
+    tpl_set_var('lib_cachemap3_js', "lib/cachemap3.js.php?$cacheMapVersion");
+
 }
 
 function handleUserLogged()

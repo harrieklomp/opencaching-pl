@@ -5,6 +5,9 @@ use Utils\Database\XDb;
 
 $rootpath = '../';
 require($rootpath . 'lib/common.inc.php');
+require($rootpath . 'lib/export.inc.php');
+require($rootpath . 'lib/calculation.inc.php');
+
 if ($error == true) {
     echo 'Unable to connect to database';
     exit;
@@ -69,20 +72,20 @@ if (($ziptype != '0') && ($ziptype != 'zip') && ($ziptype != 'gzip') && ($ziptyp
     exit;
 }
 
-// aufräumen ... 24h nach letztem Abruf bylo 86400
+// clean up ... 245h nach the last call  bylo 86400
 $cleanerdate = date($sDateformat, time() - 10800);
 $rs = XDb::xSql("SELECT `id` FROM `xmlsession` WHERE `last_use`< ? AND `cleaned`=0", $cleanerdate);
 
 while ($r = XDb::xFetchArray($rs)) {
-    // xmlsession_data löschen
+    // delete xmlsession_data
     XDb::xSql('DELETE FROM `xmlsession_data` WHERE `session_id`= ? ', $r['id']);
 
-    // dateien löschen
+    // delete files
     $path = $zip_basedir . 'ocxml11/' . $r['id'];
     if (is_dir($path))
         unlinkrecursiv($path);
 
-    // cleaned speichern
+    // save cleaned
     XDb::xSql('UPDATE `xmlsession` SET `cleaned`=1 WHERE `id`= ? ', $r['id']);
 }
 
@@ -99,7 +102,7 @@ if (isset($_REQUEST['sessionid'])) {
     outputXmlSessionFile($sessionid, $filenr, $bOcXmlTag, $bDocType, $bXmlDecl, $ziptype);
 }
 else {
-    // fitler parameters
+    // filter parameters
     $dModifiedsince = isset($_REQUEST['modifiedsince']) ? $_REQUEST['modifiedsince'] : '0';
 
     // selections
@@ -271,7 +274,7 @@ exit;
 function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $ziptype)
 {
     global $zip_basedir, $zip_wwwdir, $sDateformat, $sDateshort, $t1, $t2, $t3, $safemode_zip, $safemode_zip, $sCharset, $bAttrlist, $absolute_server_URI;
-    // alle records aus tmpxml_* übertragen
+    // transfer all records from tmpxml_*
 
     if (!mb_ereg_match('^[0-9]{1,11}', $sessionid))
         die('sessionid invalid');
@@ -331,7 +334,7 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
 
     /* end now a few dynamically loaded constants */
 
-    // temporäre Datei erstellen
+    // create temporary file
     if (!is_dir($zip_basedir . 'ocxml11/' . $sessionid))
         mkdir($zip_basedir . 'ocxml11/' . $sessionid);
 
@@ -365,14 +368,14 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
             FROM `cache_attrib` WHERE `language`='pl'");
         fwrite($f, $t1 . '<attrlist>' . "\n");
         while ($r = XDb::xFetchArray($rs)) {
-            fwrite($f, $t2 . '<attr id="' . $r['id'] . '" icon_large="' . xmlentities($absolute_server_URI . $r['icon_large']) . '" icon_no="' . xmlentities($absolute_server_URI . $r['icon_no']) . '" icon_undef="' . xmlentities($absolute_server_URI . $r['icon_undef']) . '">' . xmlcdata($r['text_long']) . '</attr>' . "\n");
+            fwrite($f, $t2 . '<attr id="' . $r['id'] . '" icon_large="' . xmlentities2($absolute_server_URI . $r['icon_large']) . '" icon_no="' . xmlentities2($absolute_server_URI . $r['icon_no']) . '" icon_undef="' . xmlentities2($absolute_server_URI . $r['icon_undef']) . '">' . xmlcdata($r['text_long']) . '</attr>' . "\n");
         }
         fwrite($f, $t1 . '</attrlist>' . "\n");
         XDb::xFreeResults($rs);
     }
     $rs = XDb::xSql(
         'SELECT `user`.`user_id` `id`, `user`.`node` `node`, `user`.`uuid` `uuid`, `user`.`username` `username`,
-                `user`.`pmr_flag` `pmr_flag`, `user`.`date_created` `date_created`, `user`.`last_modified` `last_modified`
+                `user`.`date_created` `date_created`, `user`.`last_modified` `last_modified`
         FROM `tmpxml_users`, `user`
         WHERE `tmpxml_users`.`id`=`user`.`user_id`');
 
@@ -381,7 +384,7 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
 
         fwrite($f, $t2 . '<id id="' . $r['id'] . '" node="' . $r['node'] . '">' . $r['uuid'] . '</id>' . "\n");
         fwrite($f, $t2 . '<username>' . xmlcdata($r['username']) . '</username>' . "\n");
-        fwrite($f, $t2 . '<pmr>' . (($r['pmr_flag'] == 0) ? '0' : '1') . '</pmr>' . "\n");
+        fwrite($f, $t2 . '<pmr>0</pmr>' . "\n");
         fwrite($f, $t2 . '<datecreated>' . date($sDateformat, strtotime($r['date_created'])) . '</datecreated>' . "\n");
         fwrite($f, $t2 . '<lastmodified>' . date($sDateformat, strtotime($r['last_modified'])) . '</lastmodified>' . "\n");
 
@@ -408,7 +411,7 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
         fwrite($f, $t2 . '<name>' . xmlcdata($r['name']) . '</name>' . "\n");
         fwrite($f, $t2 . '<longitude>' . sprintf('%01.5f', $r['longitude']) . '</longitude>' . "\n");
         fwrite($f, $t2 . '<latitude>' . sprintf('%01.5f', $r['latitude']) . '</latitude>' . "\n");
-        fwrite($f, $t2 . '<type id="' . $r['type'] . '" short="' . xmlentities($cachetypes[$r['type']]['short']) . '">' . xmlcdata($cachetypes[$r['type']]['pl']) . '</type>' . "\n");
+        fwrite($f, $t2 . '<type id="' . $r['type'] . '" short="' . xmlentities2($cachetypes[$r['type']]['short']) . '">' . xmlcdata($cachetypes[$r['type']]['pl']) . '</type>' . "\n");
         fwrite($f, $t2 . '<status id="' . $r['status'] . '">' . xmlcdata($cachestatus[$r['status']]['pl']) . '</status>' . "\n");
         fwrite($f, $t2 . '<country id="' . $r['country'] . '">' . xmlcdata($counties[$r['country']]['pl']) . '</country>' . "\n");
         fwrite($f, $t2 . '<size id="' . $r['size'] . '">' . xmlcdata($cachesizes[$r['size']]['pl']) . '</size>' . "\n");
@@ -416,7 +419,7 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
         fwrite($f, $t2 . '<difficulty>' . sprintf('%01.1f', $r['difficulty'] / 2) . '</difficulty>' . "\n");
         fwrite($f, $t2 . '<terrain>' . sprintf('%01.1f', $r['terrain'] / 2) . '</terrain>' . "\n");
         fwrite($f, $t2 . '<rating waylength="' . $r['way_length'] . '" needtime="' . $r['search_time'] . '" />' . "\n");
-        fwrite($f, $t2 . '<waypoints gccom="' . xmlentities($r['wp_gc']) . '" gpsgames="' . xmlentities($r['wp_nc']) . '" oc="' . xmlentities($r['wp_oc']) . '" />' . "\n");
+        fwrite($f, $t2 . '<waypoints gccom="' . xmlentities2($r['wp_gc']) . '" gpsgames="' . xmlentities2($r['wp_nc']) . '" oc="' . xmlentities2($r['wp_oc']) . '" />' . "\n");
         fwrite($f, $t2 . '<datehidden>' . date($sDateformat, strtotime($r['date_hidden'])) . '</datehidden>' . "\n");
         fwrite($f, $t2 . '<datecreated>' . date($sDateformat, strtotime($r['date_created'])) . '</datecreated>' . "\n");
         fwrite($f, $t2 . '<lastmodified>' . date($sDateformat, strtotime($r['last_modified'])) . '</lastmodified>' . "\n");
@@ -513,7 +516,7 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
                     ');
     while ($r = XDb::xFetchArray($rs)) {
         $r['text'] = mb_ereg_replace('<br />', '', $r['text']);
-        $r['text'] = preg_replace('/&amp;#(38|60|62);/', '&#$1;', $r['text']);  // decode OKAPI logs
+        $r['text'] = mb_ereg_replace('/&amp;#(38|60|62);/', '&#$1;', $r['text']);  // decode OKAPI logs
         $r['text'] = html_entity_decode($r['text'], ENT_COMPAT, 'UTF-8');
 
         fwrite($f, $t1 . '<cachelog>' . "\n");
@@ -543,7 +546,7 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
         fwrite($f, $t2 . '<id id="' . $r['id'] . '" node="' . $r['node'] . '">' . $r['uuid'] . '</id>' . "\n");
         fwrite($f, $t2 . '<url>' . xmlcdata($r['url']) . '</url>' . "\n");
         fwrite($f, $t2 . '<title>' . xmlcdata($r['title']) . '</title>' . "\n");
-        fwrite($f, $t2 . '<object id="' . $r['object_id'] . '" type="' . $r['object_type'] . '" typename="' . xmlentities($objecttypes[$r['object_type']]) . '">' . object_id2uuid($r['object_id'], $r['object_type']) . '</object>' . "\n");
+        fwrite($f, $t2 . '<object id="' . $r['object_id'] . '" type="' . $r['object_type'] . '" typename="' . xmlentities2($objecttypes[$r['object_type']]) . '">' . object_id2uuid($r['object_id'], $r['object_type']) . '</object>' . "\n");
         fwrite($f, $t2 . '<attributes spoiler="' . $r['spoiler'] . '" display="' . $r['display'] . '" />' . "\n");
         fwrite($f, $t2 . '<datecreated>' . date($sDateformat, strtotime($r['date_created'])) . '</datecreated>' . "\n");
         fwrite($f, $t2 . '<lastmodified>' . date($sDateformat, strtotime($r['last_modified'])) . '</lastmodified>' . "\n");
@@ -560,7 +563,7 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
     while ($r = XDb::xFetchArray($rs)) {
         fwrite($f, $t1 . '<removedobject>' . "\n");
         fwrite($f, $t2 . '<id id="' . $r['id'] . '" node="' . $r['node'] . '" />' . "\n");
-        fwrite($f, $t2 . '<object id="' . $r['localid'] . '" type="' . $r['type'] . '" typename="' . xmlentities($objecttypes[$r['type']]) . '">' . $r['uuid'] . '</object>' . "\n");
+        fwrite($f, $t2 . '<object id="' . $r['localid'] . '" type="' . $r['type'] . '" typename="' . xmlentities2($objecttypes[$r['type']]) . '">' . $r['uuid'] . '</object>' . "\n");
         fwrite($f, $t2 . '<removeddate>' . date($sDateformat, strtotime($r['removed_date'])) . '</removeddate>' . "\n");
         fwrite($f, $t1 . '</removedobject>' . "\n");
     }
@@ -574,7 +577,7 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
     $rel_xmlfile = 'ocxml11/' . $sessionid . '/' . $sessionid . '-' . $filenr . '-' . $fileid . '.xml';
     $rel_zipfile = 'ocxml11/' . $sessionid . '/' . $sessionid . '-' . $filenr . '-' . $fileid;
 
-    // zippen und url-redirect
+    // zip and redirect url
     if ($ziptype == '0') {
         tpl_redirect($zip_wwwdir . 'ocxml11/' . $sessionid . '/' . $sessionid . '-' . $filenr . '-' . $fileid . '.xml');
         exit;
@@ -590,7 +593,6 @@ function outputXmlFile($sessionid, $filenr, $bXmlDecl, $bOcXmlTag, $bDocType, $z
     $call = $safemode_zip . ' --type=' . escapeshellcmd($ziptype) . ' --src=' . escapeshellcmd($rel_xmlfile) . ' --dst=' . escapeshellcmd($rel_zipfile);
     system($call);
 
-    // datei vorhanden?
     if (!file_exists($zip_basedir . $rel_zipfile))
         die('all ok, but zip failed - internal server error');
 
@@ -603,7 +605,7 @@ function startXmlSession($sModifiedSince, $bCache, $bCachedesc, $bCachelog, $bUs
 {
     global $rootpath;
 
-    // session anlegen
+    // create session
     XDb::xSql(
         'INSERT INTO `xmlsession` (`last_use`, `modified_since`, `date_created`)
         VALUES (NOW(), ?, NOW())', date('Y-m-d H:i:s', strtotime($sModifiedSince)));
@@ -617,7 +619,7 @@ function startXmlSession($sModifiedSince, $bCache, $bCachedesc, $bCachelog, $bUs
     $recordcount['removedobjects'] = 0;
 
     if ($selection['type'] == 0) {
-        // ohne selection
+        // without selection
         if ($bCache == 1) {
             $stmt = XDb::xSql(
                 "INSERT INTO xmlsession_data (`session_id`, `object_type`, `object_id`)
@@ -916,21 +918,16 @@ function xmlcdata($str)
         $str = output_convert($str);
         return '<![CDATA[' . filterevilchars($str) . ']]>';
     } else
-        return xmlentities($str);
+        return xmlentities2($str);
 }
 
-function xmlentities($str)
+function xmlentities2($str)
 {
-    $from[0] = '&';
-    $to[0] = '&amp;';
-    $from[1] = '<';
-    $to[1] = '&lt;';
-    $from[2] = '>';
-    $to[2] = '&gt;';
-    $from[3] = '"';
-    $to[3] = '&quot;';
-    $from[4] = '\'';
-    $to[4] = '&apos;';
+    $from[0] = '&'; $to[0] = '&amp;';
+    $from[1] = '<'; $to[1] = '&lt;';
+    $from[2] = '>'; $to[2] = '&gt;';
+    $from[3] = '"'; $to[3] = '&quot;';
+    $from[4] = '\''; $to[4] = '&apos;';
 
     for ($i = 0; $i <= 4; $i++)
         $str = mb_ereg_replace($from[$i], $to[$i], $str);
@@ -987,7 +984,14 @@ function unlinkrecursiv($path)
 
     $notunlinked = 0;
 
-    $hDir = opendir($path);
+    if(!is_dir($path)){
+        return true;
+    }
+
+    $hDir = @opendir($path);
+    if($hDir===false){
+        return true;
+    }
     while (false !== ($file = readdir($hDir))) {
         if (($file != '.') && ($file != '..')) {
             if (is_dir($path . $file)) {
@@ -1008,7 +1012,9 @@ function unlinkrecursiv($path)
     closedir($hDir);
 
     if ($notunlinked == 0) {
-        rmdir($path);
+        if(is_dir($path)){
+            rmdir($path);
+        }
         return true;
     } else
         return false;

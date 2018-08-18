@@ -291,6 +291,11 @@ table.ptCacheTable th:last-child, table.statsTable th:last-child{
     height:auto;
 }
 
+
+#powerTrailDescription ol {
+    font-size: 100%;
+}
+
 #oldIE{
     color: red;
     border: solid 1px;
@@ -304,13 +309,10 @@ table.ptCacheTable th:last-child, table.statsTable th:last-child{
 }
 
 #map-canvas, #map_canvas {
-    margin-top: 20px;
+    margin-top: 5px;
     height: 460px;
-    width: 500px;
-    margin-left: auto;
-    margin-right: auto;
+    width: 100%;
     padding: 0px;
-    border: 1px solid #0051B9
 }
 #mapOuterdiv{
     margin-left: auto;
@@ -390,4 +392,9 @@ table.ptCacheTable th:last-child, table.statsTable th:last-child{
 }
 .powerTrailLogo {
     max-width: 250px;
+}
+textarea.powerTrailEditor {
+    width: 97%;
+    min-width: 600px;
+    height: 400px;
 }

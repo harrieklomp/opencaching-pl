@@ -1,35 +1,11 @@
 <?php
-
 namespace lib\Objects\GeoCache;
 
 use lib\Objects\User\User;
-
 use lib\Controllers\Php7Handler;
 
-/**
- * Description of GeoCacheLog
- * 1    Found it    log/16x16-found.png
- * 2    Didn't find it  log/16x16-dnf.png
- * 3    Comment     log/16x16-note.png
- * 4    Moved   log/16x16-moved.png
- * 5    Potrzebny serwis    Needs maintenance   log/16x16-need-maintenance.png
- * 7    Attended    log/16x16-attend.png
- * 8    Zamierza uczestniczyć  Will attend     log/16x16-will_attend.png
- * 10   Gotowa do szukania  Ready to search     log/16x16-published.png
- * 11   Niedostępna czasowo    Temporarily unavailable     log/16x16-temporary.png
- * 12   Komentarz COG   OC Team comment     log/16x16-octeam.png
- * 9    Zarchiwizowana  Archived    log/16x16-trash.png
- * @author Łza
- */
-class GeoCacheLog
+class GeoCacheLog extends GeoCacheLogCommons
 {
-
-    const LOGTYPE_FOUNDIT = 1;
-    const LOGTYPE_DIDNOTFIND = 2;
-    const LOGTYPE_COMMENT = 3;
-    const LOGTYPE_MOVED = 4;
-    const LOGTYPE_NEEDMAINTENANCE = 5;
-    const LOGTYPE_ATTENDED = 7;
 
     private $id;
     private $geoCache;
@@ -48,7 +24,6 @@ class GeoCacheLog
     private $ownerNotified;
     private $node;
     private $deleted;
-    private $encrypt;
     private $delByUserId;
     private $editByUserId;
     private $editCount;
@@ -56,7 +31,7 @@ class GeoCacheLog
 
     public function __construct()
     {
-
+        parent::__construct();
     }
 
     public function getId()
@@ -70,7 +45,7 @@ class GeoCacheLog
      */
     public function getGeoCache()
     {
-        if(!($this->geoCache instanceof GeoCache)){
+        if (!($this->geoCache instanceof GeoCache)) {
             $this->geoCache = new GeoCache(array('cacheId' => $this->geoCache));
         }
 
@@ -83,7 +58,7 @@ class GeoCacheLog
      */
     public function getUser()
     {
-        if(!($this->user instanceof User)){
+        if (!($this->user instanceof User)) {
             $this->user = new User(array('userId' => $this->user));
         }
         return $this->user;
@@ -92,6 +67,16 @@ class GeoCacheLog
     public function getType()
     {
         return $this->type;
+    }
+
+    /**
+     * Returns translation key for log type
+     *
+     * @return string
+     */
+    public function getTypeTranslationKey()
+    {
+        return self::typeTranslationKey($this->getType());
     }
 
     public function getDate()
@@ -159,11 +144,6 @@ class GeoCacheLog
         return $this->deleted;
     }
 
-    public function getEncrypt()
-    {
-        return $this->encrypt;
-    }
-
     public function getDelByUserId()
     {
         return $this->delByUserId;
@@ -182,6 +162,45 @@ class GeoCacheLog
     public function getLastDeleted()
     {
         return $this->lastDeleted;
+    }
+
+    /**
+     * Return URL of the log object
+     * @return string
+     */
+    public function getLogUrl()
+    {
+        return parent::getLogUrlByLogId($this->id);
+    }
+
+    /**
+     * Returns URL of the log icon
+     * @return string
+     */
+    public function getLogIcon()
+    {
+        return parent::GetIconForType($this->getType());
+    }
+
+    /**
+     * Returns true if $userid recommended cache related with log
+     * @param integer $userid
+     * @return boolean
+     */
+    public function isRecommendedByUser($userid)
+    {
+        $params = [];
+        $params['cacheid']['value'] = $this->geoCache->getCacheId();
+        $params['cacheid']['data_type'] = 'integer';
+        $params['userid']['value'] = $userid;
+        $params['userid']['data_type'] = 'integer';
+        $query = '
+            SELECT COUNT(*)
+            FROM `cache_rating`
+            WHERE `cache_id` = :cacheid
+              AND `user_id` = :userid
+        ';
+        return (bool) $this->db->paramQueryValue($query, 0, $params);
     }
 
     public function setId($logId)
@@ -286,12 +305,6 @@ class GeoCacheLog
         return $this;
     }
 
-    public function setEncrypt($encrypt)
-    {
-        $this->encrypt = Php7Handler::Boolval($encrypt);
-        return $this;
-    }
-
     public function setDelByUserId($delByUserId)
     {
         $this->delByUserId = $delByUserId;
@@ -316,48 +329,100 @@ class GeoCacheLog
         return $this;
     }
 
+    private function loadByLogId($logId)
+    {
 
-    /**
-     * There are many places where log text is displayed as a tooltip
-     * It is needed to remove many chars which can break the tooltip display operation
-     * 
-     * @param String $text - original log text
-     * @return String - clean log text
-     */
-    public static function cleanLogTextForToolTip( $text ){
+        //find log by Id
+        $s = $this->db->multiVariableQuery(
+            "SELECT * FROM cache_logs WHERE id = :1 LIMIT 1", $logId);
 
-    	//strip all tags but not <li>
-    	$text = strip_tags($text, "<li>");
-    	
-    	$replace = array(
-	    	//'<p>&nbsp;</p>' => '', //duplicated ? by strip_tags above
-	    	'&nbsp;' => ' ',
-	    	//'<p>' => '', //duplicated ? by strip_tags above
-	    	"\n" => ' ',
-	    	"\r" => '',
-	    	//'</p>' => "", //duplicated ? by strip_tags above
-	    	//'<br>' => "", //duplicated ? by strip_tags above
-	    	//'<br />' => "", //duplicated ? by strip_tags above
-	    	//'<br/>' => "", //duplicated ? by strip_tags above
-		 	'<li>' => " - ",
-	    	'</li>' => "",	
-	    	'&oacute;' => 'o',
-	    	'&quot;' => '-',
-	    	//'&[^;]*;' => '', ???
-	    	'&' => '',
-	    	"'" => '',
-	    	'"' => '',
-	    	'<' => '',
-	    	'>' => '',
-	    	'(' => ' -',
-	    	')' => '- ',
-	    	']]>' => ']] >',
-	    	'' => '' 
-	    );
-    	
-    	$text = str_ireplace( array_keys($replace), array_values($replace), $text);
-    	return preg_replace('/[\x00-\x08\x0E-\x1F\x7F\x0A\x0C]+/', '', $text);
- 
+        $logDbRow = $this->db->dbResultFetchOneRowOnly($s);
+
+        if(is_array($logDbRow)) {
+            $this->loadFromDbRow($logDbRow);
+        } else {
+            throw new \Exception("No such cache_log");
+        }
     }
 
+    private function loadFromDbRow($row)
+    {
+        $this
+        ->setGeoCache($row['cache_id'])
+        ->setDate(new \DateTime($row['date']))
+        ->setDateCreated(new \DateTime($row['date_created']))
+        ->setDelByUserId($row['del_by_user_id'])
+        ->setDeleted($row['deleted'])
+        ->setEditByUserId($row['edit_by_user_id'])
+        ->setEditCount($row['edit_count'])
+        ->setLastDeleted($row['last_deleted'])
+        ->setLastModified(new \DateTime($row['last_modified']))
+        ->setId($row['id'])
+        ->setMp3count($row['mp3count'])
+        ->setNode($row['node'])
+        ->setOkapiSyncbase(new \DateTime($row['okapi_syncbase']))
+        ->setOwnerNotified($row['owner_notified'])
+        ->setPicturesCount($row['picturescount'])
+        ->setText($row['text'])
+        ->setTextHtml($row['text_html'])
+        ->setTextHtmlEdit($row['text_htmledit'])
+        ->setType($row['type'])
+        ->setUser($row['user_id'])
+        ->setUuid($row['uuid']);
+    }
+
+    /**
+     * Create GeoCacheLog object based on logId
+     *
+     * @param integer $logId
+     * @return GeoCacheLog|NULL
+     */
+    public static function fromLogIdFactory($logId)
+    {
+        $obj = new self();
+        try {
+            $obj->loadByLogId($logId);
+            return $obj;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Check if log can be reverted.
+     * Returns true if:
+     * - log is deleted
+     * - if log type is "found" | "attended" | "will attend" - there is not
+     *   an another active log in this type (should be only one)
+     *
+     * @return boolean
+     */
+    public function canBeReverted()
+    {
+        if (! $this->getDeleted())
+        {
+            return false; //log is NOT deleted
+        }
+        if (in_array($this->getType(),
+            [GeoCacheLog::LOGTYPE_FOUNDIT,
+            GeoCacheLog::LOGTYPE_ATTENDED,
+            GeoCacheLog::LOGTYPE_WILLATTENDED])) {
+                // There can be only one log "found", "attended", "will attend"
+                return (! $this->getGeoCache()->hasUserLogByType($this->getUser(), $this->getType()));
+            }
+        return true;
+    }
+
+    /**
+     * Reverts (undeletes) log
+     */
+    public function revertLog()
+    {
+        $this->setDeleted(false);
+        $this->db->multiVariableQuery(
+            'UPDATE `cache_logs`
+            SET `deleted` = :1
+            WHERE `id` = :2',
+            $this->getDeleted(), $this->getId());
+    }
 }

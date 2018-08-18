@@ -3,12 +3,16 @@
  * This script is used (can be loaded) by /search.php
  */
 
+ob_start();
+
 use Utils\Database\XDb;
 use Utils\Database\OcDb;
 use lib\Objects\GeoCache\GeoCacheCommons;
+use lib\Objects\GeoCache\CacheNote;
 
 global $content, $bUseZip, $usr, $hide_coords, $dbcSearch, $queryFilter;
 require_once ('lib/common.inc.php');
+require_once ('lib/calculation.inc.php');
 set_time_limit(1800);
 
 function getPictures($cacheid, $picturescount)
@@ -30,17 +34,15 @@ function getPictures($cacheid, $picturescount)
     return $retval;
 }
 
-// sitename and slogan international handling
-$nodeDetect = substr($absolute_server_URI, - 3, 2);
 
 $gpxHead = '<?xml version="1.0" encoding="utf-8"?>
 <gpx xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
      xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd http://geocaching.com.au/geocache/1 http://geocaching.com.au/geocache/1/geocache.xsd http://www.gsak.net/xmlv1/5 http://www.gsak.net/xmlv1/5/gsak.xsd"
-     xmlns="http://www.topografix.com/GPX/1/0" version="1.0" creator="' . $site_name . '">
-  <desc>Cache Listing Generated from ' . $site_name . ' {wpchildren}</desc>
-  <author>' . $site_name . '</author>
+     xmlns="http://www.topografix.com/GPX/1/0" version="1.0" creator="' . convert_string($site_name) . '">
+  <desc>Cache Listing Generated from ' . convert_string($site_name) . ' {wpchildren}</desc>
+  <author>' . convert_string($site_name) . '</author>
   <url>' . $absolute_server_URI . '</url>
-  <urlname>' . $site_name . ' - ' . tr('oc_subtitle_on_all_pages_' . $nodeDetect) . '</urlname>
+  <urlname>' . convert_string($site_name) . ' - ' . convert_string(tr('oc_subtitle_on_all_pages_' . $config['ocNode'])) . '</urlname>
   <time>{time}</time>
 ';
 
@@ -104,9 +106,9 @@ $gpxWaypoints = '<wpt lat="{wp_lat}" lon="{wp_lon}">
     <type>Waypoint|{wp_type}</type>
     <gsak:wptExtension xmlns:gsak="http://www.gsak.net/xmlv1/5">
     <gsak:Parent>{waypoint}</gsak:Parent>
-    <gsak:Code>{waypoint} {wp_stage}</gsak:Code>
-    <gsak:Child_Flag>false</gsak:Child_Flag>
     <gsak:Child_ByGSAK>false</gsak:Child_ByGSAK>
+    <gsak:Child_Flag>false</gsak:Child_Flag>
+    <gsak:Code>{waypoint} {wp_stage}</gsak:Code>
     </gsak:wptExtension>
   </wpt>
 ';
@@ -262,7 +264,7 @@ if ($usr || ! $hide_coords) {
     if ($usr === false) {
         $query .= ' `caches`.`longitude` `longitude`, `caches`.`latitude` `latitude`, 0 as cache_mod_cords_id FROM `caches` ';
     } else {
-        $query .= ' IFNULL(`cache_mod_cords`.`longitude`, `caches`.`longitude`) `longitude`, IFNULL(`cache_mod_cords`.`latitude`, `caches`.`latitude`) `latitude`, IFNULL(cache_mod_cords.id,0) as cache_mod_cords_id
+        $query .= ' IFNULL(`cache_mod_cords`.`longitude`, `caches`.`longitude`) `longitude`, IFNULL(`cache_mod_cords`.`latitude`, `caches`.`latitude`) `latitude`, IFNULL(cache_mod_cords.latitude,0) as cache_mod_cords_id
             FROM `caches`
             LEFT JOIN `cache_mod_cords` ON `caches`.`cache_id` = `cache_mod_cords`.`cache_id` AND `cache_mod_cords`.`user_id` = ' . $usr['userid'];
     }
@@ -302,7 +304,7 @@ if ($usr || ! $hide_coords) {
     $queryLimit = ' LIMIT ' . $startat . ', ' . $count;
     // cleanup (old gpxcontent lingers if gpx-download is cancelled by user)
     $dbcSearch->simpleQuery('DROP TEMPORARY TABLE IF EXISTS `gpxcontent`');
-    // temporäre tabelle erstellen
+    // create temporary table
     $dbcSearch->simpleQuery('CREATE TEMPORARY TABLE `gpxcontent` ' . $query . $queryLimit);
 
     $s = $dbcSearch->simpleQuery('SELECT COUNT(*) `count` FROM `gpxcontent`');
@@ -316,7 +318,7 @@ if ($usr || ! $hide_coords) {
         $rName = $dbcSearch->dbResultFetchOneRowOnly($s);
 
         if (isset($_GET['realname']) && $_GET['realname'] == 1)
-            $sFilebasename = str_replace(" ", "", PLConvert('UTF-8', 'POLSKAWY', $rName['name']));
+            $sFilebasename = str_replace(" ", "", convert_string($rName['name']));
         else
             $sFilebasename = $rName['wp_oc'];
     } else {
@@ -334,7 +336,7 @@ if ($usr || ! $hide_coords) {
                 $sFilebasename = trim($rName['name']);
                 $sFilebasename = str_replace(" ", "_", $sFilebasename);
             } else {
-                $sFilebasename = '' . $short_sitename . '' . $options['queryid'];
+                $sFilebasename = 'search' . $options['queryid'];
             }
         }
     }
@@ -346,14 +348,6 @@ if ($usr || ! $hide_coords) {
         $content = '';
         require_once ($rootpath . 'lib/phpzip/ss_zip.class.php');
         $phpzip = new ss_zip('', 6);
-    }
-
-    if ($bUseZip == true) {
-        header("content-type: application/zip");
-        header('Content-Disposition: attachment; filename=' . $sFilebasename . '.zip');
-    } else {
-        header("Content-type: application/gpx");
-        header("Content-Disposition: attachment; filename=" . $sFilebasename . ".gpx");
     }
 
     $children = '';
@@ -371,10 +365,27 @@ if ($usr || ! $hide_coords) {
     }
 
     $gpxHead = str_replace('{wpchildren}', $children, $gpxHead);
-    append_output($gpxHead);
+    echo $gpxHead;
 
 
-    $stmt = XDb::xSql('SELECT `gpxcontent`.`cache_id` `cacheid`, `gpxcontent`.`longitude` `longitude`, `gpxcontent`.`latitude` `latitude`, `gpxcontent`.cache_mod_cords_id, `caches`.`wp_oc` `waypoint`, `caches`.`date_hidden` `date_hidden`, `caches`.`picturescount` `picturescount`, `caches`.`name` `name`, `caches`.`country` `country`, `caches`.`terrain` `terrain`, `caches`.`difficulty` `difficulty`, `caches`.`desc_languages` `desc_languages`, `caches`.`size` `size`, `caches`.`type` `type`, `caches`.`status` `status`, `user`.`username` `username`, `gpxcontent`.`user_id` `owner_id`,`cache_desc`.`desc` `desc`, `cache_desc`.`short_desc` `short_desc`, `cache_desc`.`hint` `hint`, `cache_desc`.`rr_comment`, `caches`.`logpw`, `caches`.`votes` `votes`, `caches`.`score` `score`, `caches`.`topratings` `topratings` FROM `gpxcontent`, `caches`, `user`, `cache_desc` WHERE `gpxcontent`.`cache_id`=`caches`.`cache_id` AND `caches`.`cache_id`=`cache_desc`.`cache_id` AND `caches`.`default_desclang`=`cache_desc`.`language` AND `gpxcontent`.`user_id`=`user`.`user_id`');
+    $stmt = XDb::xSql(
+        'SELECT `gpxcontent`.`cache_id` `cacheid`, `gpxcontent`.`longitude` `longitude`,
+        `gpxcontent`.`latitude` `latitude`, `gpxcontent`.cache_mod_cords_id,
+        `caches`.`wp_oc` `waypoint`, `caches`.`date_hidden` `date_hidden`,
+        `caches`.`picturescount` `picturescount`, `caches`.`name` `name`,
+        `caches`.`country` `country`, `caches`.`terrain` `terrain`,
+        `caches`.`difficulty` `difficulty`, `caches`.`desc_languages` `desc_languages`,
+        `caches`.`size` `size`, `caches`.`type` `type`, `caches`.`status` `status`,
+        `user`.`username` `username`, `gpxcontent`.`user_id` `owner_id`,
+        `cache_desc`.`desc` `desc`, `cache_desc`.`short_desc` `short_desc`,
+        `cache_desc`.`hint` `hint`, `cache_desc`.`rr_comment`, `caches`.`logpw`,
+        `caches`.`votes` `votes`, `caches`.`score` `score`, `caches`.`topratings` `topratings`
+    FROM `gpxcontent`, `caches`, `user`, `cache_desc`
+    WHERE `gpxcontent`.`cache_id`=`caches`.`cache_id`
+        AND `caches`.`cache_id`=`cache_desc`.`cache_id`
+        AND `caches`.`default_desclang`=`cache_desc`.`language`
+        AND `gpxcontent`.`user_id`=`user`.`user_id`');
+
     while ($r = XDb::xFetchArray($stmt)) {
         if (@$enable_cache_access_logs) {
 
@@ -412,7 +423,7 @@ if ($usr || ! $hide_coords) {
         $thisline = str_replace('{waypoint}', $r['waypoint'], $thisline);
         $thisline = str_replace('{cacheid}', $r['cacheid'], $thisline);
         $thisline = str_replace('{cachename}', cleanup_text($r['name']), $thisline);
-        $thisline = str_replace('{country}', tr($r['country']), $thisline);
+        $thisline = str_replace('{country}', cleanup_text(tr($r['country'])), $thisline);
         $region = XDb::xMultiVariableQueryValue(
             "SELECT `adm3` FROM `cache_location` WHERE `cache_id`= :1 LIMIT 1", 0, $r['cacheid']);
         $thisline = str_replace('{region}', $region, $thisline);
@@ -431,15 +442,17 @@ if ($usr || ! $hide_coords) {
 
         $logpw = ($r['logpw'] == "" ? "" : "" . tr('search_gpxgc_01') . " <br />");
         $thisline = str_replace('{shortdesc}', cleanup_text($r['short_desc']), $thisline);
-        $thisline = str_replace('{desc}', cleanup_text($logpw . $r['desc']), $thisline);
+        $thisline = str_replace('{desc}', xmlencode_text($logpw . $r['desc']), $thisline);
 
         // add personal cache info if user login to OC
         if ($usr == true) {
-            $notes_rs = XDb::xSql("SELECT  `cache_notes`.`desc` `desc` FROM `cache_notes`
-                    WHERE `cache_notes` .`user_id`= ? AND `cache_notes`.`cache_id`= ? ", $usr['userid'], $r['cacheid']);
 
-            if ($cn = XDb::xFetchArray($notes_rs)) {
-                $thisline = str_replace('{personal_cache_note}', cleanup_text("<br/><br/>-- " . tr('search_gpxgc_02') . ": --<br/> " . $cn['desc'] . "<br/>"), $thisline);
+            $cacheNote = CacheNote::getNote($usr['userid'], $r['cacheid']);
+
+            if (!empty($cacheNote)) {
+                $thisline = str_replace('{personal_cache_note}',
+                    cleanup_text("<br/><br/>-- " . tr('search_gpxgc_02') .
+                        ": --<br/> " . $cacheNote . "<br/>"), $thisline);
             } else {
                 $thisline = str_replace('{personal_cache_note}', "", $thisline);
             }
@@ -566,7 +579,7 @@ if ($usr || ! $hide_coords) {
         $terrain = str_replace('.0', '', $terrain);
         $thisline = str_replace('{terrain}', $terrain, $thisline);
 
-        $thisline = str_replace('{owner}', xmlentities($r['username']), $thisline);
+        $thisline = str_replace('{owner}', xmlentities(convert_string($r['username'])), $thisline);
         $thisline = str_replace('{owner_id}', xmlentities($r['owner_id']), $thisline);
 
         $lang = XDb::xEscape($lang);
@@ -596,7 +609,7 @@ if ($usr || ! $hide_coords) {
 
             $thislog = str_replace('{id}', $rLog['id'], $thislog);
             $thislog = str_replace('{date}', date($gpxTimeFormat, strtotime($rLog['date'])), $thislog);
-            $thislog = str_replace('{username}', xmlentities($rLog['username']), $thislog);
+            $thislog = str_replace('{username}', xmlentities(convert_string($rLog['username'])), $thislog);
             $thislog = str_replace('{finder_id}', xmlentities($rLog['userid']), $thislog);
             if (isset($gpxLogType[$rLog['type']]))
                 $logtype = $gpxLogType[$rLog['type']];
@@ -604,7 +617,7 @@ if ($usr || ! $hide_coords) {
                 $logtype = $gpxLogType[0];
 
             $thislog = str_replace('{type}', $logtype, $thislog);
-            $thislog = str_replace('{text}', cleanup_text($rLog['text']), $thislog);
+            $thislog = str_replace('{text}', xmlencode_text($rLog['text']), $thislog);
             $logentries .= $thislog . "\n";
         }
         $thisline = str_replace('{logs}', $logentries, $thisline);
@@ -654,7 +667,7 @@ if ($usr || ! $hide_coords) {
                 $thiswp = str_replace('{time}', $time, $thiswp);
                 $thiswp = str_replace('{wp_type_name}', $rwp['wp_type_name'], $thiswp);
                 if ($rwp['stage'] != 0) {
-                    $thiswp = str_replace('{wp_stage}', " Etap" . $rwp['stage'], $thiswp);
+                    $thiswp = str_replace('{wp_stage}', " " . tr('stage_wp') . ": " . $rwp['stage'], $thiswp);
                 } else {
                     $thiswp = str_replace('{wp_stage}', $rwp['wp_type_name'], $thiswp);
                 }
@@ -674,142 +687,36 @@ if ($usr || ! $hide_coords) {
                 if ($rwp['type'] == 4) {
                     $thiswp = str_replace('{wp_type}', "Circle with X", $thiswp);
                 }
+                if ($rwp['type'] == 6) {
+                    $thiswp = str_replace('{wp_type}', "Trailhead", $thiswp);
+                }
                 $waypoints .= $thiswp;
             }
         }
         $thisline = str_replace('{cache_waypoints}', $waypoints, $thisline);
 
-        append_output($thisline);
-        ob_flush();
+        echo $thisline;
+        // DO NOT USE HERE:
+        // ob_flush();
     }
 
-    append_output($gpxFoot);
+    echo $gpxFoot;
 
-    // phpzip versenden
+    // compress using phpzip
     if ($bUseZip == true) {
+        $content = ob_get_clean();
         $phpzip->add_data($sFilebasename . '.gpx', $content);
-        echo $phpzip->save($sFilebasename . '.zip', 'b');
+        $out = $phpzip->save($sFilebasename . '.zip', 'b');
+
+        header("content-type: application/zip");
+        header('Content-Disposition: attachment; filename=' . $sFilebasename . '.zip');
+        echo $out;
+        ob_end_flush();
+    } else {
+        header("Content-type: application/gpx");
+        header("Content-Disposition: attachment; filename=" . $sFilebasename . ".gpx");
+        ob_end_flush();
     }
 }
 
 exit();
-
-function xmlentities($str)
-{
-    $from[0] = '&';
-    $to[0] = '&amp;';
-    $from[1] = '<';
-    $to[1] = '&lt;';
-    $from[2] = '>';
-    $to[2] = '&gt;';
-    $from[3] = '"';
-    $to[3] = '&quot;';
-    $from[4] = '\'';
-    $to[4] = '&apos;';
-    $from[5] = ']]>';
-    $to[5] = ']] >';
-
-    for ($i = 0; $i <= 4; $i ++)
-        $str = str_replace($from[$i], $to[$i], $str);
-    $str = preg_replace('/[[:cntrl:]]/', '', $str);
-    return $str;
-}
-
-function cleanup_text($str)
-{
-    // $str= tidy_html_description($str);
-    $str = PLConvert('UTF-8', 'POLSKAWY', $str);
-
-    $str = strip_tags($str, "<p><br /><li>");
-    // <p> -> nic
-    // </p>, <br /> -> nowa linia
-    $from[] = '<p>';
-    $to[] = '';
-    $from[] = '</p>';
-    $to[] = "\n";
-    $from[] = '<br />';
-    $to[] = "\n";
-    $from[] = '<br>';
-    $to[] = "\n";
-    $from[] = '<br>';
-    $to[] = "\n";
-
-    $from[] = '<li>';
-    $to[] = " - ";
-    $from[] = '</li>';
-    $to[] = "\n";
-
-    $from[] = '&oacute;';
-    $to[] = 'o';
-    $from[] = '&quot;';
-    $to[] = '"';
-    $from[] = '&[^;]*;';
-    $to[] = '';
-
-    $from[] = '&';
-    $to[] = '&amp;';
-    $from[] = '<';
-    $to[] = '&lt;';
-    $from[] = '>';
-    $to[] = '&gt;';
-    $from[] = ']]>';
-    $to[] = ']] >';
-    $from[] = '';
-    $to[] = '';
-
-    for ($i = 0; $i < count($from); $i ++)
-        $str = str_replace($from[$i], $to[$i], $str);
-    $str = preg_replace('/[[:cntrl:]]/', '', $str);
-    return $str;
-}
-
-function append_output($str)
-{
-    global $content, $bUseZip;
-
-    if ($bUseZip == true)
-        $content .= $str;
-    else
-        echo $str;
-}
-
-
-/*
- Funkcja do konwersji polskich znakow miedzy roznymi systemami kodowania.
- Zwraca skonwertowany tekst.
-
- Argumenty:
- $source - string - źródłowe kodowanie
- $dest - string - źródłowe kodowanie
- $tekst - string - tekst do konwersji
-
- Obsługiwane formaty kodowania to:
- POLSKAWY (powoduje zamianę polskich liter na ich łacińskie odpowiedniki)
- ISO-8859-2
- WINDOWS-1250
- UTF-8
- ENTITIES (zamiana polskich znaków na encje html)
-
- Przyklad:
- echo(PlConvert('UTF-8','ISO-8859-2','Zażółć gęślą jaźń.'));
- */
-function PLConvert($source,$dest,$tekst)
-{
-    $source=strtoupper($source);
-    $dest=strtoupper($dest);
-    if($source==$dest) return $tekst;
-
-    $chars['POLSKAWY']    =array('a','c','e','l','n','o','s','z','z','A','C','E','L','N','O','S','Z','Z');
-    $chars['ISO-8859-2']  =array("\xB1","\xE6","\xEA","\xB3","\xF1","\xF3","\xB6","\xBC","\xBF","\xA1","\xC6","\xCA","\xA3","\xD1","\xD3","\xA6","\xAC","\xAF");
-    $chars['WINDOWS-1250']=array("\xB9","\xE6","\xEA","\xB3","\xF1","\xF3","\x9C","\x9F","\xBF","\xA5","\xC6","\xCA","\xA3","\xD1","\xD3","\x8C","\x8F","\xAF");
-    $chars['UTF-8']       =array('ą','ć','ę','ł','ń','ó','ś','ź','ż','Ą','Ć','Ę','Ł','Ń','Ó','Ś','Ź','Ż');
-    $chars['ENTITIES']    =array('ą','ć','ę','ł','ń','ó','ś','ź','ż','Ą','Ć','Ę','Ł','Ń','Ó','Ś','Ź','Ż');
-
-    if(!isset($chars[$source])) return false;
-    if(!isset($chars[$dest])) return false;
-
-    $tekst = str_replace('a', 'a', $tekst);
-    $tekst = str_replace('é', 'e', $tekst);
-
-    return str_replace($chars[$source],$chars[$dest],$tekst);
-}

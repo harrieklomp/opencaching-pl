@@ -2,6 +2,8 @@
 
 use Utils\Database\XDb;
 use lib\Objects\GeoCache\GeoCache;
+use Utils\Generators\Uuid;
+use Utils\Text\UserInputFilter;
 //prepare the templates and include all neccessary
 require_once('./lib/common.inc.php');
 
@@ -27,7 +29,7 @@ if ($error == false) {
                 $tplname = 'newdesc';
 
                 tpl_set_var('desc_err', '');
-                $show_all_langs = false; 
+                $show_all_langs = false;
 
                 $default_lang = 'PL';
 
@@ -43,7 +45,7 @@ if ($error == false) {
                 $sel_lang = isset($_POST['desc_lang']) ? $_POST['desc_lang'] : $default_lang;
                 $desc = isset($_POST['desc']) ? $_POST['desc'] : '';
 
-                $desc = userInputFilter::purifyHtmlString($desc);
+                $desc = UserInputFilter::purifyHtmlString($desc);
                 $hints = htmlspecialchars($hints, ENT_COMPAT, 'UTF-8');
 
                 $desc_lang_exists = false;
@@ -61,7 +63,7 @@ if ($error == false) {
                     $desc_lang_exists = ( XDb::xFetchArray($desc_rs) != false);
 
                     if ($desc_lang_exists == false) {
-                        $desc_uuid = create_uuid();
+                        $desc_uuid = Uuid::create();
                         //add to DB
                         XDb::xSql("INSERT INTO `cache_desc` (`id`,`cache_id`,`language`,`desc`,`desc_html`,`desc_htmledit`,
                                                        `hint`,`short_desc`,`last_modified`,`uuid`,`node`)

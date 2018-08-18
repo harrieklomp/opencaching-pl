@@ -5,7 +5,6 @@ use Utils\Database\XDb;
 global $usr;
 global $get_userid;
 global $filter;
-global $language;
 global $lang;
 $userid = '';
 
@@ -81,10 +80,10 @@ if ($usr) {
         return XDb::xFetchArray($query);
     }
     ?>
-    <script type="text/javascript" src="/lib/labeledmarker.js">
+    <script src="/lib/labeledmarker.js">
     </script>
 
-    <script type="text/javascript">
+    <script>
 
     //<![CDATA[
                 var map;

@@ -10,10 +10,11 @@ require_once __DIR__.'/../lib/common.inc.php';
 
 $appContainer = ApplicationContainer::Instance();
 if( $appContainer->getLoggedUser() === null){
-    $loggedUserId = -9999;
+    $loggedUserId = null;
 } else {
     $loggedUserId = $appContainer->getLoggedUser()->getUserId();
 }
+
 
 $commentsArr = PowerTrailController::getEntryTypes();
 $ptOwners = powerTrailBase::getPtOwners($_REQUEST['projectId']);
@@ -30,7 +31,13 @@ $s = $db->multiVariableQuery($q, $_REQUEST['projectId']);
 $count = $db->dbResultFetchOneRowOnly($s);
 $count = $count['count'];
 
-$query = 'SELECT * FROM  `PowerTrail_comments`, `user` WHERE  `PowerTrailId` =:variable1 AND `deleted` = 0 AND `PowerTrail_comments`.`userId` = `user`.`user_id` ORDER BY  `logDateTime` DESC LIMIT :variable2 , :variable3   '  ;
+$query = 'SELECT * FROM  `PowerTrail_comments`, `user`
+          WHERE  `PowerTrailId` =:variable1
+            AND `deleted` = 0
+            AND `PowerTrail_comments`.`userId` = `user`.`user_id`
+          ORDER BY  `logDateTime` DESC
+          LIMIT :variable2 , :variable3   ';
+
 $params['variable1']['value'] = (integer) $_REQUEST['projectId'];
 $params['variable1']['data_type'] = 'integer';
 $params['variable2']['value'] = (integer) $_REQUEST['start'];;
@@ -48,23 +55,34 @@ if(count($result) == 0) {
 $toDisplay = '<table id="commentsTable" cellspacing="0">';
 
 
-foreach ($result as $key => $dbEntery) {
-    $userActivity = $dbEntery['hidden_count'] + $dbEntery['founds_count'] + $dbEntery['notfounds_count'];
-    $logDateTime = explode(' ', $dbEntery['logDateTime']);
+foreach ($result as $key => $dbEntry) {
+    $userActivity = $dbEntry['hidden_count'] + $dbEntry['founds_count'] + $dbEntry['notfounds_count'];
+
+    $logDateTime = explode(' ', $dbEntry['logDateTime']);
+
+    if(!array_key_exists($dbEntry['commentType'], $commentsArr)){
+        // skip unknown comments type entires
+        continue;
+    }
+
     $toDisplay .= '
     <tr>
         <td colspan="3" class="commentHead">
-            <span class="CommentDate" id="CommentDate-'.$dbEntery['id'].'">'. $logDateTime[0].'</span><span class="commentTime" id="commentTime-'.$dbEntery['id'].'">'.substr($logDateTime[1],0,-3).'</span><a href="viewprofile.php?userid='.$dbEntery['userId'].'"><b>'.$dbEntery['username'].'</b></a> (<img height="13" src="tpl/stdstyle/images/blue/thunder_ico.png" /><font size="-1">'.$userActivity.'</font>)
-            - <span style="color: '.$commentsArr[$dbEntery['commentType']]['color'].';">'. tr($commentsArr[$dbEntery['commentType']]['translate']).'</span>';
-    if(isset($loggedUserId)){
+            <span class="CommentDate" id="CommentDate-'.$dbEntry['id'].'">'. $logDateTime[0].'</span>
+            <span class="commentTime" id="commentTime-'.$dbEntry['id'].'">'.substr($logDateTime[1],0,-3).'</span>
+                <a href="viewprofile.php?userid='.$dbEntry['userId'].'"><b>'.$dbEntry['username'].'</b></a>
+                (<img height="13" src="tpl/stdstyle/images/blue/thunder_ico.png" /><font size="-1">'.$userActivity.'</font>)
+            - <span style="color: '.$commentsArr[$dbEntry['commentType']]['color'].';">'. tr($commentsArr[$dbEntry['commentType']]['translate']).'</span>';
+
+    if(!is_null($loggedUserId)){
         $toDisplay .= '<span class="editDeleteComment">';
-        if(($loggedUserId == $dbEntery['userId'] || in_array($loggedUserId, $ownersIdArray))&&$dbEntery['userId']!=-1&&$dbEntery['commentType']!=3&&$dbEntery['commentType']!=4&&$dbEntery['commentType']!=5&&$dbEntery['commentType']!=6) {
-            $toDisplay .= '<img src="tpl/stdstyle/images/free_icons/cross.png" /><a href="javascript:void(0);" onclick="deleteComment('.$dbEntery['id'].','.$loggedUserId.')">'.tr('pt130').'</a>';
+        if(($loggedUserId == $dbEntry['userId'] || in_array($loggedUserId, $ownersIdArray))&&$dbEntry['userId']!=-1&&$dbEntry['commentType']!=3&&$dbEntry['commentType']!=4&&$dbEntry['commentType']!=5&&$dbEntry['commentType']!=6) {
+            $toDisplay .= '<img src="tpl/stdstyle/images/free_icons/cross.png" /><a href="javascript:void(0);" onclick="deleteComment('.$dbEntry['id'].','.$loggedUserId.')">'.tr('pt130').'</a>';
         }
-        if($loggedUserId == $dbEntery['userId']) {
+        if($loggedUserId == $dbEntry['userId']) {
                 $toDisplay .= '
                     <img src="tpl/stdstyle/images/free_icons/pencil.png" />
-                    <a href="javascript:void(0);" onclick="editComment('.$dbEntery['id'].','.$loggedUserId.')">'.tr('pt145').'</a>';
+                    <a href="javascript:void(0);" onclick="editComment('.$dbEntry['id'].','.$loggedUserId.')">'.tr('pt145').'</a>';
             }
         $toDisplay .= '</span>';
     }
@@ -72,8 +90,8 @@ foreach ($result as $key => $dbEntery) {
         </td>
     </tr>
     <tr>
-        <td class="commentContent" valign="top"><span id="commentId-'.$dbEntery['id'].'" >'.htmlspecialchars_decode(stripslashes($dbEntery['commentText'])).'</span></td>
-    </tr><tr><td>&nbsp</td></tr>'
+        <td class="commentContent" valign="top"><span id="commentId-'.$dbEntry['id'].'" >'.htmlspecialchars_decode(stripslashes($dbEntry['commentText'])).'</span></td>
+    </tr><tr><td>&nbsp;</td></tr>'
     ;
 }
 $toDisplay .= '</table>';

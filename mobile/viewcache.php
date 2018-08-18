@@ -59,6 +59,10 @@ if (isSet($_GET['wp']) && !empty($_GET['wp']) && $_GET['wp'] != "OP") {
         $wynik = XDb::xSql($query);
 
         $i = 0;
+        $cache_desc = array();
+        $cache_desc['desc'] = '';
+        $cache_desc['short_desc'] = '';
+        $cache_desc['hint'] = '';
 
         while ($rekord = XDb::xFetchArray($wynik)) {
 
@@ -114,11 +118,11 @@ if (isSet($_GET['wp']) && !empty($_GET['wp']) && $_GET['wp'] != "OP") {
             $cache_info['score'] = 5;
 
         if (isset($_SESSION['user_id'])) {
-            $query3 = "select id from cache_watches where user_id = '" . $_SESSION['user_id'] . "' and cache_id ='" . $caches['cache_id'] . "';";
+            $query3 = "select count(*) as c from cache_watches where user_id = '" . $_SESSION['user_id'] . "' and cache_id ='" . $caches['cache_id'] . "';";
             $wynik3 = XDb::xSql($query3);
             $watched = XDb::xFetchArray($wynik3);
             $watched = $watched[0];
-            if (!empty($watched))
+            if ($watched>0)
                 $cache_info['watched'] = $watched;
             else
                 $cache_info['watched'] = -1;

@@ -9,7 +9,7 @@
 }
 
 #cache-title-icons {
-  width: 60px; 
+  width: 60px;
   margin-right: 10px;
   float: left;
   clear: left;
@@ -29,15 +29,15 @@
   float: right;
   width: 30%;
   max-width: 40%;
-  border-radius: 5px 5px; 
-  -moz-border-radius: 5px; 
-  -webkit-border-radius: 5px; 
-  border:1px solid #337fed; 
+  border-radius: 5px 5px;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  border:1px solid #337fed;
   padding: 5px;
 }
 
 #geoPath-head {
-  color: #337fed; 
+  color: #337fed;
   border-bottom: 1px solid #337fed;
 }
 
@@ -99,9 +99,34 @@ div#viewcache-maptypes { width: 380px; text-align: right;}
 div#viewcache-numstats { width: 190px; height: 230px; text-align: left; }
 div#viewcache-map { width: 185px; height: 190px; float: right;}
 
-div#viewcache-description               { font-family: arial, sans serif; line-height: 1.6em; font-size: 12px; margin-top: 5px;}
-div#viewcache-description *             { max-width: 770px; }
-div#viewcache-description p             { line-height: 1.6em; font-size: 13px; }
+div#viewcache-description {
+	max-width: 100%;
+	font-family: arial, sans serif;
+	line-height: 1.3em;
+	font-size: 12px;
+}
+div#viewcache-description img {
+	max-width: 770px;
+}
+
+div#viewcache-description>p,
+div#viewcache-description>ul {
+	font-size: 12px;
+	font-family: arial, sans serif;
+}
+
+div#viewcache-description>ol {
+	padding: 0px 0px 0px 25px;
+}
+
+div#viewcache-description>sub,
+div#viewcache-description>sup {
+	font-size: 0.7em;
+}
+
+div#viewcache-description * {
+	margin: 0px 0px 0.5em 0px;
+}
 
 div#viewcache-utility                   { font-size: 12px; }
 div.viewcache-pictureblock              { float: left; }
@@ -109,8 +134,8 @@ div.viewcache-pictureblock span.title   { display: block; max-width: 175px; padd
 
 #waypoints-table {
   width: 100%;
-  border-collapse: collapse; 
-  font-size: 12px; 
+  border-collapse: collapse;
+  font-size: 12px;
   line-height: 1.6em;
   text-align: center;
   border: 1px solid black;
@@ -180,34 +205,145 @@ textarea.userNoteTextarea {
 }
 
 .naturaTable {
-  width: 90%; 
-  border-collapse: collapse; 
+  width: 90%;
+  border-collapse: collapse;
   font-weight: bold;
-  font-size: 14px; 
+  font-size: 14px;
   line-height: 1.6em"
 }
 
 .naturaTable td {
-  text-align: center; 
+  text-align: center;
   vertical-align: middle;
 }
 
 .naturaTable a {
-  text-color: blue;  
+  text-color: blue;
 }
 
 #buttons-left {
-  float: left; 
+  float: left;
 }
 
 #buttons-right {
-  float: right; 
+  float: right;
 }
 
 #descLangs-span {
-  margin: 0 20px;  
+  margin: 0 20px;
 }
 
 #userNote-div {
   margin: 0 20px;
+}
+
+label.two-state-btn input{
+  display: none;
+}
+
+label.two-state-btn input:checked ~ span.uncheckedLabel {
+  display: none;
+}
+
+label.two-state-btn input:not(:checked) ~ span.checkedLabel {
+  display: none;
+}
+
+a.links2:link {
+    font-weight:bold;
+    color: #323232;
+    text-decoration:none;
+}
+
+a.links2:visited {
+    font-weight:bold;
+    color: #323232;
+    text-decoration:none;
+}
+
+a.links2:active {
+    text-decoration:none;
+}
+
+a.links2:hover {
+    font-weight:bold;
+    color:black;
+    text-decoration: none;
+}
+
+/*links with color  */
+a.links4:link {
+    font-weight:bold;
+    color: rgb(88,144,168);
+    text-decoration:none;
+}
+
+a.links4:visited {
+    font-weight:bold;
+    color: rgb(88,144,168);
+    text-decoration:none;
+}
+
+a.links4:active {
+    text-decoration:none;
+}
+
+a.links4:hover {
+    font-weight:bold;
+    color:blue;
+    text-decoration: underline;
+}
+
+#viewcache-coordsinfo {
+    margin-bottom: 0.5em;
+}
+
+.viewcache-coordsinfo-block {
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1.0em;
+    padding: 0px 0.2em;
+}
+
+.CoordsDegMinSec, .CoordsDecimal {
+    display: none;
+}
+
+#cacheCoordinates, #copy-coords {
+    cursor: pointer;
+}
+
+#copy-coords-status {
+    display: none;
+}
+
+.coords-image {
+    height: 1.0em;
+    width: auto;
+}
+
+.copy-coords-status {
+    background: #fffbc6 !important;
+}
+
+.copy-coords-status .ui-widget-header {
+    border: none;
+    background: transparent;
+}
+
+.copy-coords-status .ui-dialog-titlebar-close:focus {
+    border: none;
+    outline: none;
+}
+
+.copy-coords-status .ui-dialog-titlebar-close::-moz-focus-inner {
+  border: 0;
+}
+
+.copy-coords-status .copy-coords-failure {
+    color: #a00000;
+}
+
+.copy-coords-status .copy-coords-values {
+    font-weight: bold;
 }

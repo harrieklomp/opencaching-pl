@@ -34,6 +34,7 @@ class OcPdo extends PDO
         $options = array(
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::MYSQL_ATTR_LOCAL_INFILE => true,
             PDO::ATTR_EMULATE_PREPARES => true /* TODO: we should consider disabling the emulation!
             But this means that placeholders can't be reuse in one query (case: multiVariableQuery) */
         );
@@ -91,7 +92,9 @@ class OcPdo extends PDO
         //get short version of the trace
         $traceStr = '';
         foreach($e->getTrace() as $trace){
-            $traceStr.= ' | '.$trace['file'].'::'.$trace['line'];
+            if(isset($trace['file']) && isset($trace['line'])){
+                $traceStr.= ' | '.$trace['file'].'::'.$trace['line'];
+            }
         }
 
         //send email to RT
@@ -136,7 +139,7 @@ class OcPdo extends PDO
      *
      * @return OcDb object
      */
-    public static function instance()
+    protected static function instance()
     {
         static $instance = null;
         if ($instance === null) {

@@ -3,11 +3,31 @@
 use lib\Objects\GeoCache\GeoCache;
 use Utils\Database\XDb;
 use Utils\Database\OcDb;
+use Utils\I18n\Languages;
+use Utils\Generators\Uuid;
+use lib\Objects\Coordinates\Coordinates;
+use Utils\EventHandler\EventHandler;
 
 //prepare the templates and include all neccessary
 global $rootpath;
 
 require_once('./lib/common.inc.php');
+
+$STATUS = array("READY" => 1,
+    "TEMP_UNAVAILABLE" => 2,
+    "ARCHIVED" => 3,
+    "HIDDEN_FOR_APPROVAL" => 4,
+    "NOT_YET_AVAILABLE" => 5,
+    "BLOCKED" => 6
+);
+
+$CACHESIZE = array("MICRO" => 2,
+    "SMALL" => 3,
+    "NORMAL" => 4,
+    "LARGE" => 5,
+    "VERY_LARGE" => 6,
+    "NO_CONTAINER" => 7
+);
 
 function build_drop_seq($item_row, $selected_seq, $max_drop, $thisid, $drop_type)
 {
@@ -491,16 +511,17 @@ if ($error == false) {
 
                         updateAltitudeIfNeeded($cache_record, $cache_id);
 
+                        $cache = GeoCache::fromCacheIdFactory($cache_id);
+
                         //call eventhandler
-                        require_once($rootpath . 'lib/eventhandler.inc.php');
-                        event_edit_cache($cache_id, $usr['userid'] + 0);
+                        EventHandler::cacheEdit($cache);
 
                         // if old status is not yet published and new status is published => notify-event
                         if ($status_old == $STATUS['NOT_YET_AVAILABLE'] && $status != $STATUS['NOT_YET_AVAILABLE']) {
                             GeoCache::touchCache($cache_id);
 
                             // send new cache event
-                            event_notify_new_cache($cache_id);
+                            EventHandler::cacheNew($cache);
                         }
 
                         //generate automatic logs
@@ -509,30 +530,30 @@ if ($error == false) {
                                 $status_old == $STATUS['BLOCKED'] ) && $status == $STATUS['TEMP_UNAVAILABLE']) {
                             // generate automatic log about status cache
                             $log_text = tr('temporarily_unavailable');
-                            $log_uuid = create_uuid();
+                            $log_uuid = Uuid::create();
                             XDb::xSql(
                                 "INSERT INTO `cache_logs` (
                                     `id`, `cache_id`, `user_id`, `type`, `date`, `text`,
                                     `text_html`, `text_htmledit`, `date_created`, `last_modified`,
-                                    `uuid`, `node`,`encrypt`)
+                                    `uuid`, `node`)
                                  VALUES (
-                                    '', ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW(), ?, ?, ?)",
-                                 $cache_id, $usr['userid'], 11, $log_text, 0, 0, $log_uuid, $oc_nodeid, 0);
+                                    '', ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW(), ?, ?)",
+                                 $cache_id, $usr['userid'], 11, $log_text, 0, 0, $log_uuid, $oc_nodeid);
                         }
                         if (( $status_old == $STATUS['READY'] ||
                                 $status_old == $STATUS['TEMP_UNAVAILABLE'] ||
                                 $status_old == $STATUS['BLOCKED'] ) && $status == $STATUS['ARCHIVED']) {
                             // generate automatic log about status cache
                             $log_text = tr('archived_cache');
-                            $log_uuid = create_uuid();
+                            $log_uuid = Uuid::create();
                             XDb::xSql(
                                 "INSERT INTO `cache_logs` (
                                     `id`, `cache_id`, `user_id`, `type`, `date`, `text`,
                                     `text_html`, `text_htmledit`, `date_created`, `last_modified`,
-                                    `uuid`, `node`,`encrypt`)
+                                    `uuid`, `node`)
                                  VALUES (
-                                    '', ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW(), ?, ?, ?)",
-                                 $cache_id, $usr['userid'], 9, $log_text, 0, 0, $log_uuid, $oc_nodeid, 0);
+                                    '', ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW(), ?, ?)",
+                                 $cache_id, $usr['userid'], 9, $log_text, 0, 0, $log_uuid, $oc_nodeid);
                         }
 
                         if (( $status_old == $STATUS['TEMP_UNAVAILABLE'] ||
@@ -540,15 +561,15 @@ if ($error == false) {
                                 $status_old == $STATUS['BLOCKED'] ) && $status == $STATUS['READY']) {
                             // generate automatic log about status cache
                             $log_text = tr('ready_to_search');
-                            $log_uuid = create_uuid();
+                            $log_uuid = Uuid::create();
                             XDb::xSql(
                                 "INSERT INTO `cache_logs` (
                                     `id`, `cache_id`, `user_id`, `type`, `date`,
                                     `text`, `text_html`, `text_htmledit`, `date_created`,
-                                    `last_modified`, `uuid`, `node`,`encrypt`)
+                                    `last_modified`, `uuid`, `node`)
                                  VALUES (
-                                    '', ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW(), ?, ?, ?)",
-                                    $cache_id, $usr['userid'], 10, $log_text, 0, 0, $log_uuid, $oc_nodeid, 0);
+                                    '', ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW(), ?, ?)",
+                                    $cache_id, $usr['userid'], 10, $log_text, 0, 0, $log_uuid, $oc_nodeid);
                         }
 
                         if (( $status_old == $STATUS['READY'] ||
@@ -556,14 +577,14 @@ if ($error == false) {
                                 $status_old == $STATUS['ARCHIVED'] ) && $status == $STATUS['BLOCKED']) {
                             // generate automatic log about status cache
                             $log_text = tr('blocked_by_octeam');
-                            $log_uuid = create_uuid();
+                            $log_uuid = Uuid::create();
                             XDb::xSql(
                                 "INSERT INTO `cache_logs` (
                                     `id`, `cache_id`, `user_id`, `type`, `date`, `text`, `text_html`,
-                                    `text_htmledit`, `date_created`, `last_modified`, `uuid`, `node`,`encrypt`)
+                                    `text_htmledit`, `date_created`, `last_modified`, `uuid`, `node`)
                                  VALUES (
-                                    '', ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW(), ?, ?, ?)",
-                                    $cache_id, $usr['userid'], 12, $log_text, 0, 0, $log_uuid, $oc_nodeid, 0);
+                                    '', ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW(), ?, ?)",
+                                    $cache_id, $usr['userid'], 12, $log_text, 0, 0, $log_uuid, $oc_nodeid);
                         }
 
                         //display cache-page
@@ -679,10 +700,11 @@ if ($error == false) {
                 }
                 tpl_set_var('terrainoptions', $terrain_options);
 
-                $cacheLimitByTypePerUser = common::getUserActiveCacheCountByType($dbc, $usr['userid']);
+                $cacheLimitByTypePerUser = GeoCache::getUserActiveCachesCountByType($usr['userid']);
+
                 //build typeoptions
                 $types = '';
-                foreach ($cache_types as $type) {
+                foreach (get_cache_types_from_database() as $type) {
 
                     // blockforbidden cache types
                     if (($type['id'] != $cache_type) && in_array($type['id'], $config['forbidenCacheTypes']) && !$usr['admin']) {
@@ -705,6 +727,7 @@ if ($error == false) {
 
                 //build sizeoptions
                 $sizes = '';
+                $cache_size = get_cache_size_from_database();
                 foreach ($cache_size as $size) {
 
                     // blockforbidden cache sizes
@@ -740,7 +763,7 @@ if ($error == false) {
                         '<tr>
                             <td colspan="2">
                                 <img src="images/flags/' . strtolower($descLang) . '.gif" class="icon16" alt=""  />
-                                    &nbsp;' . htmlspecialchars(db_LanguageFromShort($descLang), ENT_COMPAT, 'UTF-8') . '&nbsp;&nbsp;
+                                    &nbsp;' . htmlspecialchars(Languages::LanguageNameFromCode($descLang, $lang), ENT_COMPAT, 'UTF-8') . '&nbsp;&nbsp;
                                 <img src="images/actions/edit-16.png" border="0" align="middle" alt="" title="Edit" />
                                 [<a href="' . htmlspecialchars($edit_url, ENT_COMPAT, 'UTF-8') . '" onclick="return check_if_proceed();">' . tr('edit') . '</a>]' .
                                 $removedesc .
@@ -762,7 +785,7 @@ if ($error == false) {
                 }
                 tpl_set_var('disablestatusoption', $disablestatusoption);
 
-                foreach ($cache_status AS $tmpstatus) {
+                foreach (get_cache_status_from_database() AS $tmpstatus) {
                     //hide id 4 => hidden by approvers, hide id 5 if it is not the current status
                     if (( $tmpstatus['id'] != $STATUS['HIDDEN_FOR_APPROVAL'] || $status_old == $STATUS['HIDDEN_FOR_APPROVAL'] ) &&
                             ( $tmpstatus['id'] != $STATUS['NOT_YET_AVAILABLE'] || $status_old == $STATUS['NOT_YET_AVAILABLE'] ) &&
@@ -898,7 +921,7 @@ if ($error == false) {
                 }
 
                 //Add Waypoint
-                if (checkField('waypoint_type', $lang)){
+                if (XDb::xContainsColumn('waypoint_type', $lang)){
                     $lang_db = $lang;
                 } else{
                     $lang_db = "en";
@@ -1019,8 +1042,7 @@ if ($error == false) {
                 tpl_set_var('wp_nc', htmlspecialchars($wp_nc, ENT_COMPAT, 'UTF-8'));
                 tpl_set_var('wp_tc', htmlspecialchars($wp_tc, ENT_COMPAT, 'UTF-8'));
                 tpl_set_var('wp_ge', htmlspecialchars($wp_ge, ENT_COMPAT, 'UTF-8'));
-                tpl_set_var('bodyMod', ' onunload="GUnload()"');
-                tpl_set_var('reset', $reset);
+                tpl_set_var('reset', tr('reset'));
                 tpl_set_var('submit', $submit);
             } else {
                 //TODO: not the owner
@@ -1032,20 +1054,45 @@ if ($error == false) {
 }
 unset($dbc);
 
+$view->loadJQuery();
 //make the template and send it out
 tpl_BuildTemplate();
 
+function get_cache_size_from_database()
+{
+    $cache_size = array();
+
+    $resp = XDb::xSql("SELECT * FROM cache_size ORDER BY id ASC");
+    while ($row = XDb::xFetchArray($resp)) {
+        $cache_size[] = $row;
+    }
+    return $cache_size;
+}
+
+function get_cache_status_from_database()
+{
+    $cache_status = array();
+
+    $resp = XDb::xSql("SELECT * FROM cache_status ORDER BY id ASC");
+    while ($row = XDb::xFetchArray($resp)) {
+        $cache_status[] = $row;
+    }
+    return $cache_status;
+}
 
 /**
  * if coordinates were changed, update altitude
  * @param array $oldCacheRecord
  * @param integer $cacheId
- * @param integer $altitude
  */
-function updateAltitudeIfNeeded($oldCacheRecord, $cacheId, $altitude = NULL){
-    /* add cache altitude altitude */
-    $geoCache = new GeoCache(array('cacheId' => $cacheId));
-    if($geoCache->getCoordinates()->getLatitude() != $oldCacheRecord['latitude'] || $geoCache->getCoordinates()->getLongitude() != $oldCacheRecord['longitude']){
-        $geoCache->getAltitudeObj()->pickAndStoreAltitude($altitude);
+function updateAltitudeIfNeeded($oldCacheRecord, $cacheId){
+
+    $geoCache = GeoCache::fromCacheIdFactory($cacheId);
+    $oldCoords = Coordinates::FromCoordsFactory($oldCacheRecord['latitude'], $oldCacheRecord['longitude']);
+    $newCoords = $geoCache->getCoordinates();
+
+    if(!$newCoords->areSameAs($oldCoords)){
+        //cords was changed - update altitude value
+        $geoCache->updateAltitude();
     }
 }

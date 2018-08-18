@@ -2,6 +2,8 @@
 
 use Utils\Database\XDb;
 use lib\Objects\GeoCache\GeoCache;
+use Utils\I18n\Languages;
+use Utils\Text\UserInputFilter;
 
 //prepare the templates and include all neccessary
 require_once('./lib/common.inc.php');
@@ -57,7 +59,7 @@ if ( $desc_record = XDb::xFetchArray($desc_rs) ) {
 
         // Text from textarea
         $desc = $_POST['desc'];
-        $desc = userInputFilter::purifyHtmlString($desc);
+        $desc = UserInputFilter::purifyHtmlString($desc);
         $hints = htmlspecialchars($hints, ENT_COMPAT, 'UTF-8');
 
         if (isset($_POST['submitform'])) {
@@ -145,7 +147,7 @@ if ( $desc_record = XDb::xFetchArray($desc_rs) ) {
     tpl_set_var('descid', $descid);
     tpl_set_var('cacheid', htmlspecialchars($desc_record['cache_id'], ENT_COMPAT, 'UTF-8'));
     tpl_set_var('desclang', htmlspecialchars($desc_lang, ENT_COMPAT, 'UTF-8'));
-    tpl_set_var('desclang_name', htmlspecialchars(db_LanguageFromShort($desc_lang), ENT_COMPAT, 'UTF-8'));
+    tpl_set_var('desclang_name', htmlspecialchars(Languages::LanguageNameFromCode($desc_lang, $lang), ENT_COMPAT, 'UTF-8'));
     tpl_set_var('cachename', htmlspecialchars($desc_record['name'], ENT_COMPAT, 'UTF-8'));
 }
 

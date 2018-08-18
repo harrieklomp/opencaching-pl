@@ -4,7 +4,10 @@ use lib\Objects\OcConfig\OcConfig;
 use lib\Objects\ApplicationContainer;
 use lib\Objects\PowerTrail\PowerTrail;
 use lib\Objects\GeoCache\GeoCache;
-
+use Utils\Uri\Uri;
+use lib\Objects\OcConfig\OcDynamicMapConfig;
+use Utils\View\View;
+use Utils\Uri\OcCookie;
 
 /**
  *  powerTrail.php
@@ -18,7 +21,7 @@ use lib\Objects\GeoCache\GeoCache;
  *
  */
 // variables required by opencaching.pl
-global $lang, $rootpath, $usr, $absolute_server_URI, $cookie, $googlemap_key;
+global $lang, $rootpath, $usr, $absolute_server_URI, $googlemap_key;
 
 //prepare the templates and include all neccessary
 require_once('lib/common.inc.php');
@@ -26,48 +29,42 @@ $ocConfig = OcConfig::instance();
 $appContainer = ApplicationContainer::Instance();
 
 require_once('lib/cache.php');
-require_once(__DIR__ . '/lib/cachemap3lib.inc.php');
 
 $_SESSION['powerTrail']['userFounds'] = $usr['userFounds'];
 
-if ($ocConfig->getPowerTrailModuleSwitchOn() === false) {
+if ($ocConfig->isPowerTrailModuleSwitchOn() === false) {
     header("location: $absolute_server_URI");
 }
 
 $firePtMenu = true;
 //Preprocessing
 if ($error == false) {
+
     if (isset($_REQUEST['sortBy']) || isset($_REQUEST['filter']) || isset($_REQUEST['sortDir'])
-    || isset($_REQUEST['myPowerTrailsBool']) || isset($_REQUEST['gainedPowerTrailsBool']) || isset($_REQUEST['historicLimitBool'])){
-        saveCookie($cookie);
+        || isset($_REQUEST['myPowerTrailsBool']) || isset($_REQUEST['gainedPowerTrailsBool'])
+        || isset($_REQUEST['historicLimitBool'])){
+
+            saveCookie();
+
     } else {
-        if ($cookie->is_set("ptSrBy"))
-            $_REQUEST['sortBy'] = $cookie->get("ptSrBy");
-        else
-            $_REQUEST['sortBy'] = 'cacheCount';
-        if ($cookie->is_set("ptFltr"))
-            $_REQUEST['filter'] = $cookie->get("ptFltr");
-        else
-            $_REQUEST['filter'] = 0;
-        if ($cookie->is_set("ptSrDr"))
-            $_REQUEST['sortDir'] = $cookie->get("ptSrDr");
-        else
-            $_REQUEST['sortDir'] = 'desc';
-        if ($cookie->is_set("ptMyBool"))
-            $_REQUEST['myPowerTrailsBool'] = $cookie->get("ptMyBool");
-        else
-            $_REQUEST['myPowerTrailsBool'] = 'no';
-        if ($cookie->is_set("ptGaBool"))
-            $_REQUEST['gainedPowerTrailsBool'] = $cookie->get("ptGaBool");
-        else
-            $_REQUEST['gainedPowerTrailsBool'] = 'no';
-        if ($cookie->is_set("ptMiniBool"))
-            $_REQUEST['historicLimitBool'] = $cookie->get("ptMiniBool");
-        else
-            $_REQUEST['historicLimitBool'] = 'no';
+
+        $_REQUEST['sortBy'] = OcCookie::getOrDefault("ptSrBy", 'cacheCount');
+        $_REQUEST['filter'] = OcCookie::getOrDefault("ptFltr", 0);
+        $_REQUEST['sortDir'] = OcCookie::getOrDefault("ptSrDr", 'desc');
+        $_REQUEST['myPowerTrailsBool'] = OcCookie::getOrDefault("ptMyBool", 'no');
+        $_REQUEST['gainedPowerTrailsBool'] = OcCookie::getOrDefault("ptGaBool", 'no');
+        $_REQUEST['historicLimitBool'] = OcCookie::getOrDefault("ptMiniBool", 'no');
+
     }
 
     $tplname = 'powerTrail';
+    $view->addLocalCss(Uri::getLinkWithModificationTime('tpl/stdstyle/css/powerTrail.css'));
+    $view->addLocalCss(Uri::getLinkWithModificationTime('tpl/stdstyle/css/ptMenuCss/style.css'));
+    $view->loadJQuery();
+    $view->loadJQueryUI();
+    $view->loadTimepicker();
+    $view->loadGMapApi();
+
     if (!$usr && $hide_coords) {
         $mapControls = 0;
         tpl_set_var('gpxOptionsTrDisplay', 'none');
@@ -103,7 +100,7 @@ if ($error == false) {
     tpl_set_var('PowerTrailCaches', 'none');
     tpl_set_var('language4js', $lang);
     tpl_set_var('powerTrailName', '');
-    tpl_set_var('powerTrailLogo', ':0');
+    tpl_set_var('powerTrailLogo', '');
     tpl_set_var('mainPtInfo', '');
     tpl_set_var('ptTypeSelector', displayPtTypesSelector('type'));
     tpl_set_var('displayToLowUserFound', 'none');
@@ -123,9 +120,11 @@ if ($error == false) {
     tpl_set_var('ocWaypoint', $oc_waypoint);
     tpl_set_var('commentsPaginateCount', powerTrailBase::commentsPaginateCount);
 
-    tpl_set_var('attributionMap', CacheMap3Lib::GenerateAttributionMap());
-    tpl_set_var('mapItems', CacheMap3Lib::GenerateMapItems());
-    tpl_set_var('showMapsWhenMore', CacheMap3Lib::GenerateShowMapsWhenMore());
+    tpl_set_var('attributionMap', OcDynamicMapConfig::getJsAttributionMap());
+    tpl_set_var('mapItems', OcDynamicMapConfig::getJsMapItems());
+    tpl_set_var('mapWMSConfigLoader', OcDynamicMapConfig::getWMSImageMapTypeOptions());
+
+
     tpl_set_var('googlemap_key', $googlemap_key);
     tpl_set_var('powerTrailId', '');
     tpl_set_var('keszynki', '');
@@ -140,6 +139,8 @@ if ($error == false) {
         tpl_set_var('ptMenu', 'none');
     $ptMenu = new powerTrailMenu($usr);
     tpl_set_var("powerTrailMenu", buildPowerTrailMenu($ptMenu->getPowerTrailsMenu()));
+
+    $view->setVar('csWikiLink', OcConfig::getWikiLink('geoPaths'));
 
     $pt = new powerTrailController($usr);
     $result = $pt->run();
@@ -161,11 +162,12 @@ if ($error == false) {
         case 'showAllSeries':
             $ptListData = displayPTrails($pt->getpowerTrails(), $pt->getPowerTrailOwn());
             tpl_set_var('filtersTrDisplay', 'table-row');
-            tpl_set_var('ptTypeSelector2', displayPtTypesSelector('filter', $_REQUEST['filter'], true));
+            tpl_set_var('ptTypeSelector2', displayPtTypesSelector('filter', isset($_REQUEST['filter'])?$_REQUEST['filter']:0, true));
             tpl_set_var('sortSelector', getSortBySelector($_REQUEST['sortBy']));
             tpl_set_var('sortDirSelector', getSortDirSelector($_REQUEST['sortDir']));
             tpl_set_var('myPowerTrailsBool', getMyPowerTrailsSelector($_REQUEST['myPowerTrailsBool']));
-            tpl_set_var('gainedPowerTrailsBool', getGainedPowerTrailsSelector($_REQUEST['gainedPowerTrailsBool']));
+            tpl_set_var('gainedPowerTrailsBool', getGainedPowerTrailsSelector(
+                isset($_REQUEST['gainedPowerTrailsBool'])?$_REQUEST['gainedPowerTrailsBool']:0));
             tpl_set_var('historicLimitBool', getMiniPowerTrailSelector($_REQUEST['historicLimitBool']));
             tpl_set_var('displayedPowerTrailsCount', $pt->getDisplayedPowerTrailsCount());
             tpl_set_var('mapCenterLat', $main_page_map_center_lat);
@@ -177,7 +179,7 @@ if ($error == false) {
             if ($pt->getPowerTrailOwn() === false)
                 tpl_set_var('statusOrPoints', tr('pt037'));
             else
-                tpl_set_var('statusOrPoints', tr('pt040'));
+                tpl_set_var('statusOrPoints', tr('cs_status'));
             tpl_set_var('mapOuterdiv', 'block');
             tpl_set_var('mapInit', 1);
             tpl_set_var('fullCountryMap', '1');
@@ -199,7 +201,7 @@ if ($error == false) {
             if ($pt->getPowerTrailOwn() === false)
                 tpl_set_var('statusOrPoints', tr('pt037'));
             else
-                tpl_set_var('statusOrPoints', tr('pt040'));
+                tpl_set_var('statusOrPoints', tr('cs_status'));
             tpl_set_var('mapOuterdiv', 'block');
             tpl_set_var('mapInit', 1);
             tpl_set_var('fullCountryMap', '1');
@@ -207,6 +209,11 @@ if ($error == false) {
 
 
         case 'showSerie':
+            if(!isset($_GET['ptrail'])){
+                // just redirect to all powertrails
+                header("Location: " . "//" . $_SERVER['HTTP_HOST'] . '/powerTrail.php');
+                exit;
+            }
             $powerTrail = new PowerTrail(array('id' => (int) $_GET['ptrail']));
             $ptOwners = $pt->getPtOwners();
             $_SESSION['ptName'] = powerTrailBase::clearPtNames($powerTrail->getName());
@@ -290,7 +297,7 @@ if ($error == false) {
             }
             break;
         default:
-            tpl_set_var('PowerTrails', displayPTrails($pt->getpowerTrails()), false);
+            tpl_set_var('PowerTrails', displayPTrails($pt->getpowerTrails(), false));
             tpl_set_var('displayPowerTrails', 'block');
             break;
     }
@@ -345,7 +352,7 @@ function displayCaches($caches, $pTrails)
         }
         $ptSelector .= '</select>';
         $rows .= '<tr><td><a href="' . $cache['wp_oc'] . '">' . $cache['wp_oc'] . '</a></td><td>' . $cache['name'] . '</td><td>' . $ptSelector . '</td>
-        <td width="50"><img style="display: none" id="addCacheLoader' . $cache['cache_id'] . '" src="tpl/stdstyle/js/jquery_1.9.2_ocTheme/ptPreloader.gif" alt="">
+        <td width="50"><img style="display: none" id="addCacheLoader' . $cache['cache_id'] . '" src="tpl/stdstyle/images/misc/ptPreloader.gif" alt="">
         <span id="cacheInfo' . $cache['cache_id'] . '" style="display: none "><img src="tpl/stdstyle/images/free_icons/accept.png" alt=""></span>
         <span id="cacheInfoNOK' . $cache['cache_id'] . '" style="display: none "><img src="tpl/stdstyle/images/free_icons/exclamation.png" alt=""></span>' .
                 $hidden .
@@ -532,11 +539,11 @@ function displayPtCommentsSelector($htmlid, PowerTrail $powerTrail, $selectedId 
 function displayPowerTrailLogo($ptId, $img)
 {
     // global $picurl;
-    if ($img == '')
-        $image = 'tpl/stdstyle/images/blue/powerTrailGenericLogo.png';
-    else
-        $image = $img;
-    return $image;
+    if (empty($img)){
+        return '/tpl/stdstyle/images/blue/powerTrailGenericLogo.png';
+    }else {
+        return $img;
+    }
 }
 
 function getSortBySelector($sel)
@@ -605,7 +612,7 @@ function generateStatusSelector($currStatus)
 {
     $selector = '<select id="ptStatusSelector">';
     if ($currStatus == 3) { //permanently closed
-        $selector .= '<option value="3">' . tr('pt212') . '</option>';
+        $selector .= '<option value="3">' . tr('cs_statusClosed') . '</option>';
     } else {
         foreach (\lib\Controllers\PowerTrailController::getPowerTrailStatus() as $val => $desc) {
             if ($val == $currStatus)
@@ -622,14 +629,13 @@ function generateStatusSelector($currStatus)
     return $selector;
 }
 
-function saveCookie($cookie)
+function saveCookie()
 {
-    $cookie->set("ptFltr", $_REQUEST['filter']);
-    $cookie->set("ptSrBy", $_REQUEST['sortBy']);
-    $cookie->set("ptSrDr", $_REQUEST['sortDir']);
-    $cookie->set("ptGaBool", $_REQUEST['gainedPowerTrailsBool']);
-    $cookie->set("ptMyBool", $_REQUEST['myPowerTrailsBool']);
-    $cookie->set("ptMiniBool", $_REQUEST['historicLimitBool']);
+    OcCookie::set("ptFltr", $_REQUEST['filter']);
+    OcCookie::set("ptSrBy", $_REQUEST['sortBy']);
+    OcCookie::set("ptSrDr", $_REQUEST['sortDir']);
+    OcCookie::set("ptGaBool", $_REQUEST['gainedPowerTrailsBool']);
+    OcCookie::set("ptMyBool", $_REQUEST['myPowerTrailsBool']);
+    OcCookie::set("ptMiniBool", $_REQUEST['historicLimitBool']);
 }
 
-?>

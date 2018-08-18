@@ -1,7 +1,5 @@
-<?php
 
-?>
-<script type="text/javascript">
+<script>
     function checkForm()
     {
         if (document.newpic_form.title.value == "")
@@ -62,7 +60,7 @@
         <tr><td class="spacer" colspan="2"></td></tr>
         <tr>
             <td class="help" colspan="2">
-                <img src="tpl/stdstyle/images/misc/hint.gif" border="0" width="15" height="11" alt="Uwaga" title="Uwaga" /> 
+                <img src="tpl/stdstyle/images/misc/hint.gif" border="0" width="15" height="11" alt="Uwaga" title="Uwaga" />
                 {{pictures_intro}}
             </td>
         </tr>

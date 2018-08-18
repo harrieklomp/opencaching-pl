@@ -1,14 +1,16 @@
 <?php
 use Utils\Database\XDb;
+use okapi\core\Exception\BadRequest;
+use okapi\Facade;
 /**
  * This script is used (can be loaded) by /search.php
  */
 
-setlocale(LC_TIME, 'pl_PL.UTF-8'); // TODO: why it's pl_PL
-
 global $content, $usr, $hide_coords, $lang, $dbcSearch;
 
 set_time_limit(1800);
+
+require_once ('lib/calculation.inc.php');
 
 
 if ($usr || !$hide_coords) {
@@ -46,7 +48,11 @@ if ($usr || !$hide_coords) {
                       LEFT JOIN `cache_mod_cords` ON `caches`.`cache_id` = `cache_mod_cords`.`cache_id` AND `cache_mod_cords`.`user_id` = '
                 . $usr['userid'];
     }
-    $query .= ' WHERE `caches`.`cache_id` IN (' . $queryFilter . ')';
+    if(!empty($queryFilter)){
+        $query .= ' WHERE `caches`.`cache_id` IN (' . $queryFilter . ')';
+    } else {
+        $query .= ' WHERE FALSE';
+    }
 
     $sortby = $options['sort'];
     if (isset($lat_rad) && isset($lon_rad) && ($sortby == 'bydistance'))
@@ -82,7 +88,7 @@ if ($usr || !$hide_coords) {
     // cleanup (old zipcontent lingers if zip-download is cancelled by user)
     $dbcSearch->simpleQuery('DROP TEMPORARY TABLE IF EXISTS `zipcontent`');
 
-    // temporäre tabelle erstellen
+    // create temporary table
     $dbcSearch->simpleQuery('CREATE TEMPORARY TABLE `zipcontent` ' . $query . $queryLimit);
 
     // echo $query;
@@ -116,7 +122,7 @@ if ($usr || !$hide_coords) {
                 $sFilebasename = trim($rName['name']);
                 $sFilebasename = str_replace(" ", "_", $sFilebasename);
             } else {
-                $sFilebasename = 'ocpl' . $options['queryid'];
+                $sFilebasename = 'search' . $options['queryid'];
             }
         }
     }
@@ -170,14 +176,13 @@ if ($usr || !$hide_coords) {
             session_start();# prevent downloading multiple parts at once
         // Including OKAPI's Facade. This is the only valid (and fast) interface to access
         // OKAPI services from within OC code.
-        require_once($rootpath . 'okapi/facade.php');
 
         try {
             $okapi_response = call_okapi($usr, $waypoints, $lang, $sFilebasename, $zippart);
 
             // This outputs headers and the file content.
             $okapi_response->display();
-        } catch (\okapi\BadRequest $e) {
+        } catch (BadRequest $e) {
             # In case of bad requests, simply output OKAPI's error response.
             # In case of other, internal errors, don't catch the error. This
             # will cause OKAPI's default error hangler to kick in (so the admins

@@ -1,16 +1,27 @@
 <?php
 
-use lib\Objects\GeoCache\GeoCache;
+use Controllers\TestController;
+use Controllers\Admin\CacheSetAdminController;
 
 require_once 'lib/common.inc.php';
 
 
-$geoCache = new GeoCache(['cacheId' => (int) $_GET['cid']]);
-d($geoCache->getAltitudeObj());
-$geoCache->getAltitudeObj()->pickAndStoreAltitude(null);
+$ctrl = new TestController();
 
-ddd($geoCache->getAltitudeObj());
+if(isset($_GET['action'])){
+    $action = $_GET['action'];
+}else{
+    $action = '';
+}
 
-echo "TEST:<hr/>";
+switch($action){
+    case 'newLayout':
+        $ctrl->newLayout();
+        break;
+    default:
+        $ctrl->index();
+}
 
-echo "<hr/>END!";
+
+exit(0);
+

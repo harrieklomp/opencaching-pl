@@ -1,5 +1,7 @@
 <?php
 
+use okapi\Facade;
+
 # This is a wrapper for OKAPI's "services/tilemap/tile" method. If takes
 # request parameters in the "legacy" mapper.php/mapper.fcgi format, converts
 # them to OKAPI's parameters, then executes OKAPI's tile-serving method.
@@ -10,14 +12,14 @@
 # Please note, that this file is NOT part of the official API. It may
 # stop working at any time.
 
-$rootpath = "../";
+require_once __DIR__ . '/ClassPathDictionary.php'; // class autoloader
 
-require_once($rootpath . 'okapi/facade.php');
+$rootpath = "../";
 
 # The code below may produce notices, so we will disable OKAPI's default
 # error handler.
 
-\okapi\OkapiErrorHandler::disable();
+Facade::disable_error_handling();
 
 # mapper.php/mapper.fcgi used to take the following parameters:
 #
@@ -36,11 +38,20 @@ $force_result_empty = false;
 
 $params['x'] = $_GET['x'];
 $params['y'] = $_GET['y'];
-$params['z'] = $_GET['z'];
+$params['z'] = $_GET['z']; //zoom
 
 # userid - we will simulate an OAuth call in the name of this user.
-# WRTODO: There seems to be a privacy issue here.
+#
+# There seems to be a privacy issue here (e.g. user X can see which caches are
+# ignored by user Y), but this worked this way for years (even before I wrote
+# this page), so I guess users don't think so.
 
+if(!isset($_GET['userid'])){
+    // userid is obligatory!
+    echo "Unknown 'userid' param!";
+    http_response_code(400);
+    exit;
+}
 $user_id = $_GET['userid'];
 
 # There are two "modes" the legacy-compatible mapper operates:
@@ -51,7 +62,7 @@ $user_id = $_GET['userid'];
 $searchdata = (isset($_GET['searchdata']) && preg_match('/^[a-f0-9]{6,32}/', $_GET['searchdata'])) ? $_GET['searchdata'] : null;
 
 if ($searchdata) {  # Mode 2 - with "searchdata".
-    \okapi\OkapiErrorHandler::reenable();
+    Facade::reenable_error_handling();
 
     # We need to transform OC's "searchdata" into OKAPI's "search set".
     # First, we need to determine if we ALREADY did that.
@@ -60,18 +71,21 @@ if ($searchdata) {  # Mode 2 - with "searchdata".
     # for each searchdata, so we will ignore it.
 
     $cache_key = "OC_searchdata_" . $searchdata;
-    $set_id = \okapi\Cache::get($cache_key);
+    $set_id = Facade::cache_get($cache_key);
     if ($set_id === null) {
         # Read the searchdata file into a temporary table.
 
-        $filepath = \okapi\Settings::get('VAR_DIR') . "/searchdata/" . $searchdata;
-        \okapi\Db::execute("
+        require (__DIR__.'/settings.inc.php');
+        $filepath = $dynbasepath."searchdata/" . $searchdata;
+
+        \okapi\core\Db::execute("
             create temporary table temp_" . $searchdata . " (
                 cache_id integer primary key
             ) engine=memory
         ");
+
         if (file_exists($filepath)) {
-            \okapi\Db::execute("
+            \okapi\core\Db::execute("
                 load data local infile '$filepath'
                 into table temp_" . $searchdata . "
                 fields terminated by ' '
@@ -83,51 +97,60 @@ if ($searchdata) {  # Mode 2 - with "searchdata".
         # Tell OKAPI to import the table into its own internal structures.
         # Cache it for two hours.
 
-        $set_info = \okapi\Facade::import_search_set("temp_" . $searchdata, 7200, 7200);
+        $set_info = Facade::import_search_set("temp_" . $searchdata, 7200, 7200);
         $set_id = $set_info['set_id'];
-        \okapi\Cache::set($cache_key, $set_id, 7200);
+        Facade::cache_set($cache_key, $set_id, 7200);
     }
     $params['set_and'] = $set_id;
     $params['status'] = "Available|Temporarily unavailable|Archived";
 
-    \okapi\OkapiErrorHandler::disable();
+    Facade::disable_error_handling();
 } else {  # Mode 1 - without "searchdata".
     # h_ignored - convert to OKAPI's "exclude_ignored".
-    if ($_GET['h_ignored'] == "true")
+    if ( isset($_GET['h_ignored']) && $_GET['h_ignored'] == "true"){
         $params['exclude_ignored'] = "true";
+    }
 
     # h_avail, h_temp_unavail, h_arch ("hide available" etc.) - convert to
     # OKAPI's "status" filter.
 
     $tmp = array();
-    if ($_GET['h_avail'] != "true")
+    if ( !isset($_GET['h_avail']) || $_GET['h_avail'] != "true"){
         $tmp[] = "Available";
-    if ($_GET['h_temp_unavail'] != "true")
+    }
+    if ( !isset($_GET['h_temp_unavail']) || $_GET['h_temp_unavail'] != "true"){
         $tmp[] = "Temporarily unavailable";
-    if ($_GET['h_arch'] != "true")
+    }
+    if ( !isset($_GET['h_arch']) || $_GET['h_arch'] != "true"){
         $tmp[] = "Archived";
+    }
     $params['status'] = implode("|", $tmp);
-    if (count($tmp) == 0)
+    if (count($tmp) == 0){
         $force_result_empty = true;
+    }
 
     # min_score, max_score - convert to OKAPI's "rating" filter. This code
     # is weird, because values passed to min_score/max_score are weird...
 
-    $t = floatval($_GET['min_score']);
-    $min_rating = ($t < 0) ? "1" : (($t < 1) ? "2" : (($t < 1.5) ? "3" : (($t < 2.2) ? "4" : "5")));
-    $t = floatval($_GET['max_score']);
-    $max_rating = ($t < 0.7) ? "1" : (($t < 1.3) ? "2" : (($t < 2.2) ? "3" : (($t < 2.7) ? "4" : "5")));
-    $params['rating'] = $min_rating . "-" . $max_rating;
-    unset($t, $min_rating, $max_rating);
+    if( !isset($_GET['min_score'],$_GET['max_score']) ){
+        $params['rating'] = "1-5|X"; // this is default rating - everything
+    } else {
+        $t = floatval($_GET['min_score']);
+        $min_rating = ($t < 0) ? "1" : (($t < 1) ? "2" : (($t < 1.5) ? "3" : (($t < 2.2) ? "4" : "5")));
+        $t = floatval($_GET['max_score']);
+        $max_rating = ($t < 0.7) ? "1" : (($t < 1.3) ? "2" : (($t < 2.2) ? "3" : (($t < 2.7) ? "4" : "5")));
+        $params['rating'] = $min_rating . "-" . $max_rating;
 
-    # h_noscore - convert to OKAPI's "rating" parameter.
+        # h_noscore - convert to OKAPI's "rating" parameter.
 
-    if ($_GET['h_noscore'] == "true")
-        $params['rating'] = $params['rating'] . "|X";
+        if (isset($_GET['h_noscore']) && $_GET['h_noscore'] == "true"){
+            $params['rating'] = $params['rating'] . "|X";
+        }
+    }
 
     # be_ftf (hunt for FTFs) - convert to OKAPI's "ftf_hunter" parameter.
 
-    if ($_GET['be_ftf'] == "true") {
+    if ( isset($_GET['be_ftf']) && $_GET['be_ftf'] == "true") {
         $params['ftf_hunter'] = "true";
 
         # Also, override previously set "status" filter. This behavior is
@@ -142,7 +165,7 @@ if ($searchdata) {  # Mode 2 - with "searchdata".
 
 
     # powertrail_only (hunt for powerTrails) - convert to OKAPI's "powertrail_only" parameter.
-    if (isset($_GET['powertrail_only']) && $_GET['powertrail_only'] == "true") {
+    if ( isset($_GET['powertrail_only']) && $_GET['powertrail_only'] == "true") {
         $params['powertrail_only'] = "true";
     }
 
@@ -154,8 +177,9 @@ if ($searchdata) {  # Mode 2 - with "searchdata".
 
     # h_nogeokret - Convert to OKAPI's "with_trackables_only" parameter.
 
-    if ($_GET['h_nogeokret'] == 'true')
+    if ( isset($_GET['h_nogeokret']) && $_GET['h_nogeokret'] == 'true'){
         $params['with_trackables_only'] = "true";
+    }
 
     # h_?, where ? is a single letter - hide a specific cache type.
     # Convert to OKAPI's "type" parameter.
@@ -182,13 +206,14 @@ if ($searchdata) {  # Mode 2 - with "searchdata".
 
     # h_own (hide user's own caches) - convert to OKAPI's "exclude_my_own" parameter.
 
-    if ($_GET['h_own'] == "true")
+    if ( isset($_GET['h_own']) && $_GET['h_own'] == "true"){
         $params['exclude_my_own'] = "true";
+    }
 
     # h_found, h_noattempt - convert to OKAPI's "found_status" parameter.
 
-    $h_found = ($_GET['h_found'] == "true");
-    $h_noattempt = ($_GET['h_noattempt'] == "true");
+    $h_found = ( isset($_GET['h_found']) && $_GET['h_found'] == "true");
+    $h_noattempt = ( isset($_GET['h_noattempt']) && $_GET['h_noattempt'] == "true");
     if ($h_found && (!$h_noattempt))
         $params['found_status'] = "notfound_only";
     elseif ((!$h_found) && $h_noattempt)
@@ -212,8 +237,8 @@ if (!$user_id)
 
 # End of "buggy" code. Re-enable OKAPI's error handler.
 
-\okapi\OkapiErrorHandler::reenable();
+Facade::reenable_error_handling();
 
 # Get OKAPI's response and display it. Add proper Cache-Control headers.
 
-\okapi\Facade::service_display('services/caches/map/tile', $user_id, $params);
+Facade::service_display('services/caches/map/tile', $user_id, $params);

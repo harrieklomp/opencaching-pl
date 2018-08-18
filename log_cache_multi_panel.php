@@ -7,16 +7,13 @@ if ($usr == false || (!isset($_FILES['userfile']) && !isset($_SESSION['log_cache
     tpl_redirect('log_cache_multi_send.php');
 } else {
     require_once($rootpath . 'lib/caches.inc.php');
-    require($stylepath . '/log_cache.inc.php');
     ?>
     <html>
         <head>
             <meta http-equiv="content-type" content="text/html; charset=UTF-8">
             <link rel="stylesheet" type="text/css" media="screen,projection" href="tpl/stdstyle/css/style_screen.css" />
             <link rel="stylesheet" type="text/css" media="print" href="tpl/stdstyle/css/style_print.css" />
-            <link rel="stylesheet" type="text/css" media="screen,projection" href="tpl/stdstyle/css/style_autumn.css" />
-        </head>
-        <body>
+
             <style>
                 a:link {
                     color:inherit;
@@ -39,7 +36,11 @@ if ($usr == false || (!isset($_FILES['userfile']) && !isset($_SESSION['log_cache
                 .bgcolorM1 {background-color: rgb(170,187,182);}
 
             </style>
-            <?php
+
+
+        </head>
+        <body>
+         <?php
             $dane = array();
 
             if (isset($_SESSION['log_cache_multi_filteredData'])) {
@@ -119,25 +120,25 @@ if ($usr == false || (!isset($_FILES['userfile']) && !isset($_SESSION['log_cache
                     <?php
                 }
             }
-        }
+}
 
-        function get_icon_for_status($status)
-        {
-            $typyStatusow = get_log_types_from_database();
-            foreach ($typyStatusow as $k => $v) {
-                if ($v['id'] == $status) {
-                    return $v['icon_small'];
-                }
-            }
+function get_icon_for_status($status)
+{
+    $typyStatusow = get_log_types_from_database();
+    foreach ($typyStatusow as $k => $v) {
+        if ($v['id'] == $status) {
+            return $v['icon_small'];
         }
+    }
+}
 
-        function get_icon_for_cache_type($type)
-        {
-            $typySkrzynek = get_cache_types_from_database();
-            foreach ($typySkrzynek as $k => $v) {
-                if ($v['id'] == $type) {
-                    return $v['icon_large'];
-                }
-            }
+function get_icon_for_cache_type($type)
+{
+    $typySkrzynek = get_cache_types_from_database();
+    foreach ($typySkrzynek as $k => $v) {
+        if ($v['id'] == $type) {
+            return $v['icon_large'];
         }
-        ?>
+    }
+}
+

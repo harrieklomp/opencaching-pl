@@ -1,8 +1,5 @@
-<?php
 
-?>
-<script src="tpl/stdstyle/js/jquery-2.0.3.min.js"></script>
-<script type="text/javascript">
+<script>
     $(function () {
         chkcountry2();
     });
@@ -43,7 +40,6 @@
         // callback handler that will be called on success
         request.done(function (response, textStatus, jqXHR) {
             $('#region1').html(response);
-            console.log(response);
         });
         request.always(function () {
             $('#regionAjaxLoader').hide();
@@ -57,7 +53,7 @@
     {
     if (document.editcache_form.size.options[document.editcache_form.size.options.length - 1].value != "7")
     {
-    document.editcache_form.size.options[document.editcache_form.size.options.length] = new Option('{{size_07}}', '7');
+    document.editcache_form.size.options[document.editcache_form.size.options.length] = new Option('{{cacheSize_none}}', '7');
     }
 
     if (!({other_nobox} && document.editcache_form.type.value == "1"))
@@ -201,10 +197,6 @@
 
 </script>
 
-<!--[if IE 6 ]> <div id="oldIE">{{pt129}}</div><br/><br/> <![endif]-->
-<!--[if IE 7 ]> <div id="oldIE">{{pt129}}</div><br/><br/> <![endif]-->
-<!--[if IE 8 ]> <div id="oldIE">{{pt129}}</div><br/><br/> <![endif]-->
-
 <form action="editcache.php" method="post" enctype="application/x-www-form-urlencoded" name="editcache_form" dir="ltr">
     <input type="hidden" name="cacheid" value="{cacheid}"/>
     <input type="hidden" id="cache_attribs" name="cache_attribs" value="{cache_attribs}" />
@@ -331,7 +323,7 @@
         </tr>
         <tr>
             <td>&nbsp;</td>
-            <td><div class="notice" style="width:500px;height:44px;">{{difficulty_problem}} <a href="rating-c.php" target="_BLANK">{{rating_system}}</a>.</div>
+            <td><div class="notice" style="width:500px;height:44px;">{{difficulty_problem}} <a href="difficultyForm.php" target="_BLANK">{{rating_system}}</a>.</div>
             </td>
         </tr>
         <tr class="form-group-sm"><td><p class="content-title-noshade">{{additional_information}} ({{optional}}):</p></td>
@@ -466,6 +458,6 @@
         </tr>
     </table>
 </form>
-<script type="text/javascript">
+<script>
     _chkVirtual();
 </script>
